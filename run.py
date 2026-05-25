@@ -147,29 +147,44 @@ def _cmd_run(args):
 
     worker_args = [(s, args.query, since, until, log_queue) for s in targets]
     results: list[tuple[str, int, Optional[str]]] = []
+    interrupted = False
     t0 = time.monotonic()
 
     try:
         if use_progress:
-            results = _run_with_progress(worker_args, targets, n_workers, log_queue)
+            _run_with_progress(worker_args, targets, n_workers, log_queue, results)
         elif n_workers == 1:
-            results = [_run_outlet(a) for a in worker_args]
+            for wa in worker_args:
+                results.append(_run_outlet(wa))
         else:
             with multiprocessing.Pool(processes=n_workers) as pool:
-                results = pool.map_async(_run_outlet, worker_args).get(timeout=7200)
+                for result in pool.imap_unordered(_run_outlet, worker_args):
+                    results.append(result)
+    except KeyboardInterrupt:
+        interrupted = True
+        logger.warning(
+            "Run interrupted — partial results for %d/%d outlets.", len(results), len(targets)
+        )
     except Exception as e:
         logger.error(f"Pool error: {e}", exc_info=True)
-        results = results or []
     finally:
         listener.stop()
         manager.shutdown()
+
+    # Mark outlets that never completed
+    completed = {s for s, _, _ in results}
+    for slug in targets:
+        if slug not in completed:
+            results.append((slug, 0, "NOT RUN"))
 
     elapsed = time.monotonic() - t0
     _log_summary(results, elapsed)
 
     # Auto-report
     from scraper.report import write_run_report
-    write_run_report(results, since, until, args.query, _DATOS_DIR, _REPORTS_DIR)
+    write_run_report(
+        results, since, until, args.query, _DATOS_DIR, _REPORTS_DIR, interrupted=interrupted
+    )
 
 
 def _run_with_progress(
@@ -177,7 +192,8 @@ def _run_with_progress(
     targets: list[str],
     n_workers: int,
     log_queue: multiprocessing.Queue,
-) -> list[tuple[str, int, Optional[str]]]:
+    results: list,
+) -> None:
     try:
         from rich.live import Live
         from rich.table import Table
@@ -185,16 +201,19 @@ def _run_with_progress(
     except ImportError:
         logger.warning("rich not installed — falling back to plain logging. Run: pip install rich")
         if n_workers == 1:
-            return [_run_outlet(a) for a in worker_args]
-        with multiprocessing.Pool(processes=n_workers) as pool:
-            return pool.map_async(_run_outlet, worker_args).get(timeout=7200)
+            for wa in worker_args:
+                results.append(_run_outlet(wa))
+        else:
+            with multiprocessing.Pool(processes=n_workers) as pool:
+                for result in pool.imap_unordered(_run_outlet, worker_args):
+                    results.append(result)
+        return
 
     console = Console()
     status: dict[str, dict] = {
         slug: {"status": "Pending", "articles": "-", "elapsed": "-", "start": None}
         for slug in targets
     }
-    t0 = time.monotonic()
 
     def make_table() -> Table:
         table = Table(title="Scraping Progress", show_lines=False)
@@ -210,37 +229,32 @@ def _run_with_progress(
             table.add_row(slug, s["status"], str(s["articles"]), elapsed_str)
         return table
 
-    results: list[tuple[str, int, Optional[str]]] = []
+    def drain_queue():
+        while not log_queue.empty():
+            try:
+                record = log_queue.get_nowait()
+                msg = record.getMessage()
+                for slug in targets:
+                    if f"[{slug}]" not in msg:
+                        continue
+                    if status[slug]["start"] is None:
+                        status[slug]["start"] = time.monotonic()
+                    if "scraping" in msg and "URLs" in msg:
+                        status[slug]["status"] = "Scraping..."
+                    elif "articles collected" in msg:
+                        n = msg.split()[msg.split().index("articles") - 1]
+                        status[slug]["articles"] = n
+                        status[slug]["status"] = "Done"
+                        if status[slug]["start"]:
+                            status[slug]["elapsed"] = f"{time.monotonic() - status[slug]['start']:.0f}s"
+                    elif "search empty" in msg or "falling back" in msg:
+                        status[slug]["status"] = "Collecting..."
+                    elif "FAILED" in msg or "error" in msg.lower():
+                        status[slug]["status"] = "[red]Error[/red]"
+            except Exception:
+                pass
 
     with Live(make_table(), console=console, refresh_per_second=2) as live:
-        # Drain log queue to update status, refresh table
-        def drain_queue():
-            while not log_queue.empty():
-                try:
-                    record = log_queue.get_nowait()
-                    msg = record.getMessage()
-                    for slug in targets:
-                        tag = f"[{slug}]"
-                        if tag not in msg:
-                            continue
-                        if status[slug]["start"] is None:
-                            status[slug]["start"] = time.monotonic()
-                        if "scraping" in msg and "URLs" in msg:
-                            status[slug]["status"] = "Scraping..."
-                        elif "articles collected" in msg:
-                            n = msg.split()[msg.split().index("articles") - 1]
-                            status[slug]["articles"] = n
-                            status[slug]["status"] = "Done"
-                            if status[slug]["start"]:
-                                status[slug]["elapsed"] = f"{time.monotonic() - status[slug]['start']:.0f}s"
-                        elif "search empty" in msg or "falling back" in msg:
-                            status[slug]["status"] = "Collecting..."
-                        elif "FAILED" in msg or "error" in msg.lower():
-                            status[slug]["status"] = "[red]Error[/red]"
-                except Exception:
-                    pass
-            live.update(make_table())
-
         if n_workers == 1:
             for wa in worker_args:
                 slug = wa[0]
@@ -256,22 +270,31 @@ def _run_with_progress(
                 live.update(make_table())
         else:
             with multiprocessing.Pool(processes=n_workers) as pool:
-                async_result = pool.map_async(_run_outlet, worker_args)
-                # Poll until done, draining the log queue for live updates
-                while not async_result.ready():
-                    drain_queue()
-                    time.sleep(0.5)
-                drain_queue()
-                results = async_result.get(timeout=7200)
-                # Update final statuses
-                for slug, n, err in results:
-                    status[slug]["status"] = "Done" if err is None else "[red]FAILED[/red]"
-                    status[slug]["articles"] = str(n)
-                    if status[slug]["start"]:
-                        status[slug]["elapsed"] = f"{time.monotonic() - status[slug]['start']:.0f}s"
-                live.update(make_table())
+                # apply_async per outlet so results are collected as each one finishes
+                pending = {wa[0]: pool.apply_async(_run_outlet, (wa,)) for wa in worker_args}
+                collected: set[str] = set()
 
-    return results
+                while len(collected) < len(pending):
+                    drain_queue()
+                    for slug, ar in list(pending.items()):
+                        if slug in collected or not ar.ready():
+                            continue
+                        try:
+                            res = ar.get()
+                        except Exception as e:
+                            res = (slug, 0, str(e))
+                        results.append(res)
+                        collected.add(slug)
+                        _, n, err = res
+                        status[slug]["status"] = "Done" if err is None else "[red]FAILED[/red]"
+                        status[slug]["articles"] = str(n)
+                        if status[slug]["start"]:
+                            status[slug]["elapsed"] = f"{time.monotonic() - status[slug]['start']:.0f}s"
+                    live.update(make_table())
+                    if len(collected) < len(pending):
+                        time.sleep(0.5)
+                drain_queue()
+                live.update(make_table())
 
 
 def _log_summary(results: list, elapsed: float):

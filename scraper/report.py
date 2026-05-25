@@ -61,6 +61,7 @@ def write_run_report(
     queries,
     datos_dir: Path,
     reports_dir: Path,
+    interrupted: bool = False,
 ) -> Path:
     """`queries` may be: None, a single str (legacy), or a list[str] (multi-query)."""
     reports_dir.mkdir(parents=True, exist_ok=True)
@@ -77,18 +78,27 @@ def write_run_report(
     lines: list[str] = []
 
     # --- Header ---
+    title = "# Scraping Run Report (INTERRUPTED — partial results)" if interrupted else "# Scraping Run Report"
     lines += [
-        f"# Scraping Run Report",
+        title,
         f"",
         f"**Timestamp:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  ",
         f"**Query:** `{query_str}`  ",
         f"**Window:** {since} to {until}  ",
-        f"",
     ]
+    if interrupted:
+        not_run = [s for s, _, e in results if e == "NOT RUN"]
+        lines.append(
+            f"**Status:** Run was interrupted. "
+            f"{len(results) - len(not_run)}/{len(results)} outlets completed. "
+            f"Missing: {', '.join(f'`{s}`' for s in not_run) if not_run else 'none'}  "
+        )
+    lines.append("")
 
     # --- Results table ---
     ok_results = [(s, n) for s, n, e in results if e is None]
-    failed_results = [(s, e) for s, n, e in results if e is not None]
+    failed_results = [(s, e) for s, n, e in results if e is not None and e != "NOT RUN"]
+    not_run_results = [(s, e) for s, n, e in results if e == "NOT RUN"]
     total_articles = sum(n for _, n in ok_results)
 
     stats_by_slug: dict[str, dict] = {}
@@ -106,7 +116,12 @@ def write_run_report(
     ]
     for slug, n, err in sorted(results, key=lambda x: x[0]):
         s = stats_by_slug[slug]
-        status = "OK" if err is None else f"FAILED"
+        if err is None:
+            status = "OK"
+        elif err == "NOT RUN":
+            status = "NOT RUN"
+        else:
+            status = "FAILED"
         lines.append(
             f"| `{slug}` | {_outlet_type(slug)} | {s['total']} "
             f"| {s['no_date']} | {s['short_body']} | {status} |"
@@ -124,6 +139,8 @@ def write_run_report(
 
     for slug, n, err in results:
         s = stats_by_slug[slug]
+        if err == "NOT RUN":
+            continue
         if err is not None:
             flags.append(
                 f"- **`{slug}` FAILED** — `{err[:120]}`  \n"
@@ -175,6 +192,21 @@ def write_run_report(
         lines += ["## Errors", ""]
         for slug, err in failed_results:
             lines += [f"### `{slug}`", f"```", err, f"```", ""]
+
+    # --- Not-run outlets (interrupted run) ---
+    if not_run_results:
+        slugs_str = ", ".join(f"`{s}`" for s, _ in not_run_results)
+        lines += [
+            "## Not run (interrupted)",
+            "",
+            f"The following outlets did not execute because the run was stopped: {slugs_str}  ",
+            f"Re-run with the same query targeting only these outlets to collect missing data:",
+            f"",
+            f"```powershell",
+            f"python run.py run {' '.join(s for s, _ in not_run_results)} --query \"...\" --since {since} --to {until}",
+            f"```",
+            "",
+        ]
 
     # --- Footer ---
     lines += [
