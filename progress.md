@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-05-26 — Google News catch-all source added
+
+- New outlet `google_news` (type: RSS) added as a 16th supplementary source.
+- Uses Google News RSS (`https://news.google.com/rss/search`) via `feedparser`. No API key required.
+- Respects `--since`/`--days` window via `after:`/`before:` RSS operators passed in the query string.
+- Redirect URLs resolved to actual outlet URLs via HEAD (+ GET fallback) for cross-outlet dedup in `_cmd_merge`.
+- `cuerpo` stores the RSS summary (no full-text — supplementary coverage use case). ShortBody warning suppressed for this outlet only in `report.py`.
+- New dependency: `feedparser>=6.0.0` added to `requirements.txt`.
+
+### Files changed
+scraper/outlets/google_news.py (new), scraper/outlets/__init__.py, requirements.txt, scraper/report.py, progress.md
+
+---
+
 ## 2026-05-22 audit (Round 2) — search for 24horas/t13/chv + selector fixes
 
 ### Outlets fixed

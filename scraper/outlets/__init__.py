@@ -13,6 +13,7 @@ from scraper.outlets.chvnoticias import ChvNoticiasScraper
 from scraper.outlets.meganoticias import MegaNoticiasScraper
 from scraper.outlets.lacuarta import LaCuartaScraper
 from scraper.outlets.emol import EmolScraper
+from scraper.outlets.google_news import GoogleNewsScraper
 
 REGISTRY: dict[str, type] = {
     "elsiglo": ElSigloScraper,
@@ -30,4 +31,5 @@ REGISTRY: dict[str, type] = {
     "meganoticias": MegaNoticiasScraper,
     "lacuarta": LaCuartaScraper,
     "emol": EmolScraper,
+    "google_news": GoogleNewsScraper,
 }

@@ -15,6 +15,7 @@ _OUTLET_TYPE = {
     "t13": "Playwright",
     "24horas": "Playwright",
     "chvnoticias": "Playwright",
+    "google_news": "RSS",
 }
 
 
@@ -38,6 +39,7 @@ def _scan_outlet_csvs(slug: str, datos_dir: Path) -> dict:
     run_csvs = [c for c in csvs if newest_mtime - c.stat().st_mtime < 60]
 
     total = no_date = short_body = 0
+    date_counts: dict[str, int] = {}
     for csv_path in run_csvs:
         try:
             with open(csv_path, encoding="utf-8") as fh:
@@ -48,10 +50,13 @@ def _scan_outlet_csvs(slug: str, datos_dir: Path) -> dict:
                         no_date += 1
                     if len(row.get("cuerpo", "")) < _MIN_BODY:
                         short_body += 1
+                    if slug == "google_news" and fecha:
+                        date_counts[fecha] = date_counts.get(fecha, 0) + 1
         except Exception:
             pass
 
-    return {"total": total, "no_date": no_date, "short_body": short_body}
+    cap_days = sorted(d for d, c in date_counts.items() if c >= 100) if slug == "google_news" else []
+    return {"total": total, "no_date": no_date, "short_body": short_body, "cap_days": cap_days}
 
 
 def write_run_report(
@@ -153,10 +158,18 @@ def write_run_report(
                 f"  The date selector may not cover all article layouts. "
                 f"  Consider adding a `<meta property=\"article:published_time\">` fallback."
             )
-        if s["short_body"] > 0:
+        if s["short_body"] > 0 and slug != "google_news":
             flags.append(
                 f"- **`{slug}` — {s['short_body']} articles with short body (<{_MIN_BODY} chars)**  \n"
                 f"  The `body_selector` may be broken or the site's layout changed."
+            )
+        if slug == "google_news" and s.get("cap_days"):
+            days_str = ", ".join(f"`{d}`" for d in s["cap_days"])
+            flags.append(
+                f"- **`google_news` — RSS cap (100 results/day) reached on: {days_str}**  \n"
+                f"  Results for these days may be incomplete. "
+                f"  Add more `--query` phrases to increase coverage "
+                f"  (each phrase gets its own 100-result slot per day)."
             )
         if err is None and s["total"] == 0:
             flags.append(
