@@ -51,9 +51,9 @@ class GoogleNewsScraper(BaseApiScraper):
             return []
         bounded_query = query
         if hasattr(self, "_since") and self._since:
-            bounded_query += f" after:{self._since.strftime('%Y/%m/%d')}"
+            bounded_query += f" after:{(self._since - timedelta(days=1)).strftime('%Y/%m/%d')}"
         if hasattr(self, "_until") and self._until:
-            bounded_query += f" before:{self._until.strftime('%Y/%m/%d')}"
+            bounded_query += f" before:{(self._until + timedelta(days=1)).strftime('%Y/%m/%d')}"
         try:
             resp = requests.get(
                 _RSS_URL,
