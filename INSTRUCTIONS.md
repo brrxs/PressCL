@@ -71,6 +71,39 @@ The scraper runs the site's native search once per phrase, dedupes URLs, then
 keeps any article whose title+body matches at least one phrase. The merge
 command accepts the same repeated `--query` syntax and uses the same filter.
 
+### `merge` — combine raw files into a curated dataset
+
+Reads all per-run CSVs in `datos/`, deduplicates by URL, applies optional date and query filters, and writes a single merged CSV + Parquet to `datos/curated/`.
+
+Google News rows are automatically normalized: the real outlet name is extracted from the `[OutletName]` prefix in the body and written to `fuente`; the ` - OutletName |` suffix is stripped from the title; and the body/subtitle fields are cleared (they contain only repeated headline text, not article content).
+
+```powershell
+python run.py merge --query "megarreforma" --since 2026-05-01
+python run.py merge --query "Mara Sedini" --query "Sedini" --since 2026-03-11
+python run.py merge                           # all articles, no filter
+```
+
+**Flags:** `--query` / `-q`, `--since`, `--to` — same semantics as `run`.
+
+### `clean` — delete raw outlet files and/or reports
+
+```powershell
+python run.py clean                        # delete all raw files in datos/*/
+python run.py clean google_news biobio     # specific outlets only
+python run.py clean --reports              # also delete reports/*.md
+python run.py clean --reports-only         # delete only reports, leave datos/ untouched
+python run.py clean --dry-run              # list files that would be deleted, no action
+```
+
+Always skips `datos/curated/` (merged datasets are never deleted by `clean`).
+
+| Flag | Description |
+|---|---|
+| `outlets` | One or more outlet slugs to target (omit for all) |
+| `--reports` | Also delete report files in `reports/` |
+| `--reports-only` | Delete only report files; leave `datos/` untouched |
+| `--dry-run` | Print the file list without deleting anything |
+
 ### `check` — smoke-test a single outlet
 
 Fetches the listing page and one article, prints selector results and the parsed article. Does not save any data.
@@ -117,8 +150,11 @@ python run.py list
 ```
 datos/
   {slug}/
-    {slug}_YYYYMMDD_HHMMSS.csv      # UTF-8 CSV
-    {slug}_YYYYMMDD_HHMMSS.parquet  # Parquet (columnar)
+    {slug}_{query}_{YYYYMMDD_HHMMSS}.csv      # UTF-8 CSV  (query omitted if none given)
+    {slug}_{query}_{YYYYMMDD_HHMMSS}.parquet  # Parquet (columnar)
+  curated/
+    {query-slug}-dataset-{YYYYMMDD}.csv       # Merged / curated output
+    {query-slug}-dataset-{YYYYMMDD}.parquet
 
 reports/
   report_YYYYMMDD_HHMMSS.md         # Auto-generated after each run

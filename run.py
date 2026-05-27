@@ -15,15 +15,49 @@ _DATOS_DIR = Path(__file__).parent / "datos"
 _CURATED_DIR = Path(__file__).parent / "datos" / "curated"
 _REPORTS_DIR = Path(__file__).parent / "reports"
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    force=True,
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler(_LOG_FILE, encoding="utf-8"),
-    ],
-)
+_TAG_COLORS: dict[str, str] = {
+    "INIT":    "\033[36m",    # cyan
+    "EXPORT":  "\033[32m",    # green
+    "DONE":    "\033[1;32m",  # bold green
+    "WARNING": "\033[33m",    # yellow
+    "ERROR":   "\033[31m",    # red
+}
+_RESET = "\033[0m"
+
+
+class _LevelTagFormatter(logging.Formatter):
+    def __init__(self, *args, use_color: bool = False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.use_color = use_color
+
+    def format(self, record: logging.LogRecord) -> str:
+        tag = getattr(record, "tag", None)
+        if tag:
+            saved, record.levelname = record.levelname, tag
+            result = super().format(record)
+            record.levelname = saved
+        else:
+            tag = record.levelname
+            result = super().format(record)
+        if self.use_color:
+            color = _TAG_COLORS.get(tag, "")
+            if color:
+                result = result.replace(f"[{tag}]", f"{color}[{tag}]{_RESET}", 1)
+        return result
+
+
+_fmt_plain = _LevelTagFormatter("%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S", use_color=False)
+_fmt_color = _LevelTagFormatter("%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S", use_color=True)
+_sh = logging.StreamHandler(sys.stdout)
+_sh.setFormatter(_fmt_color)
+_fh = logging.FileHandler(_LOG_FILE, encoding="utf-8")
+_fh.setFormatter(_fmt_plain)
+_root = logging.getLogger()
+_root.setLevel(logging.INFO)
+_root.handlers.clear()
+_root.addHandler(_sh)
+_root.addHandler(_fh)
+
 logger = logging.getLogger(__name__)
 
 
@@ -99,6 +133,27 @@ examples:
     p_merge.add_argument("--since", default=None, help="Keep articles on or after YYYY-MM-DD")
     p_merge.add_argument("--to", default=None, dest="until", help="Keep articles on or before YYYY-MM-DD")
 
+    # clean
+    p_clean = subparsers.add_parser(
+        "clean", help="Delete raw outlet files and/or reports"
+    )
+    p_clean.add_argument(
+        "outlets", nargs="*",
+        help="Outlet slugs to clean (omit for all). Ignored with --reports-only.",
+    )
+    p_clean.add_argument(
+        "--reports", action="store_true",
+        help="Also delete all files in reports/",
+    )
+    p_clean.add_argument(
+        "--reports-only", action="store_true", dest="reports_only",
+        help="Delete only report files; leave datos/ untouched",
+    )
+    p_clean.add_argument(
+        "--dry-run", action="store_true", dest="dry_run",
+        help="List files that would be deleted without removing them",
+    )
+
     # check
     p_check = subparsers.add_parser("check", help="Verify selectors for an outlet (no data saved)")
     p_check.add_argument("outlet", choices=list(REGISTRY))
@@ -116,6 +171,9 @@ examples:
 
     elif args.command == "merge":
         _cmd_merge(args)
+
+    elif args.command == "clean":
+        _cmd_clean(args)
 
     elif args.command == "check":
         _check(args.outlet)
@@ -303,11 +361,57 @@ def _run_with_progress(
 def _log_summary(results: list, elapsed: float):
     ok = [(s, n) for s, n, e in results if e is None]
     failed = [(s, e) for s, n, e in results if e is not None]
-    logger.info(f"=== Run complete in {elapsed:.0f}s: {len(ok)} OK, {len(failed)} failed ===")
+    logger.info(
+        f"=== Run complete in {elapsed:.0f}s: {len(ok)} OK, {len(failed)} failed ===",
+        extra={"tag": "DONE"},
+    )
     for slug, n in sorted(ok):
         logger.info(f"  {slug}: {n} articles")
     for slug, err in failed:
         logger.error(f"  {slug}: FAILED — {err}")
+
+
+def _cmd_clean(args):
+    files: list[Path] = []
+
+    if not args.reports_only:
+        if args.outlets:
+            slugs = args.outlets
+        else:
+            slugs = [
+                d.name for d in sorted(_DATOS_DIR.iterdir())
+                if d.is_dir() and d.name != "curated"
+            ]
+        for slug in slugs:
+            outlet_dir = _DATOS_DIR / slug
+            if not outlet_dir.is_dir():
+                print(f"  Warning: datos/{slug}/ not found, skipping.")
+                continue
+            for f in sorted(outlet_dir.iterdir()):
+                if f.suffix in (".csv", ".parquet"):
+                    files.append(f)
+
+    if args.reports or args.reports_only:
+        for f in sorted(_REPORTS_DIR.glob("*.md")):
+            files.append(f)
+
+    if not files:
+        print("No files found to delete.")
+        return
+
+    label = "[dry-run] Would delete" if args.dry_run else "Will delete"
+    print(f"\n{label} {len(files)} file(s):")
+    for f in files:
+        print(f"  {f}")
+
+    if args.dry_run:
+        print("\n[dry-run] No files deleted.")
+        return
+
+    for f in files:
+        f.unlink()
+    print(f"\nDeleted {len(files)} file(s).")
+    logger.info(f"clean: removed {len(files)} file(s)")
 
 
 def _cmd_merge(args):
@@ -323,6 +427,20 @@ def _cmd_merge(args):
         text = unicodedata.normalize("NFD", text.lower())
         text = "".join(c for c in text if not unicodedata.combining(c))
         return re.sub(r"[^a-z0-9]+", "-", text).strip("-")
+
+    _GN_PREFIX = re.compile(r'^\[([^\]]+)\]\s*')
+    _GN_SUFFIX = re.compile(r'\s*-\s*[^-]+\|?\s*$')
+
+    def _normalize_gn(row: dict) -> dict:
+        if row.get("fuente") != "google_news":
+            return row
+        m = _GN_PREFIX.match(row.get("cuerpo") or "")
+        if m:
+            row["fuente"] = m.group(1).rstrip(" |").strip()
+        row["titulo"] = _GN_SUFFIX.sub("", row.get("titulo") or "").strip()
+        row["cuerpo"] = ""
+        row["bajada"] = ""
+        return row
 
     # Parse date filters
     since = date.fromisoformat(args.since) if args.since else None
@@ -358,7 +476,7 @@ def _cmd_merge(args):
                         if not any_phrase_matches(haystack, query_phrases):
                             continue
                     seen_urls.add(url)
-                    rows.append(row)
+                    rows.append(_normalize_gn(row))
         except Exception as e:
             logger.warning(f"Could not read {csv_path}: {e}")
 

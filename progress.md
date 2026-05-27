@@ -1,7 +1,28 @@
 # prensa_chile_py — Project Progress
 
 **Project:** Monitor Social @ UC Chile — Chilean news scraper (Python)
-**Started:** 2026-05-20 | **Last updated:** 2026-05-27 (Google News → GNews library)
+**Started:** 2026-05-20 | **Last updated:** 2026-05-27 (UX improvements batch)
+
+---
+
+## 2026-05-27 — UX improvements: clean subcommand, GN normalization, filenames, log format
+
+### What changed
+
+- **`clean` subcommand** (`run.py`): new `python run.py clean` command to delete raw per-run outlet files (`datos/{slug}/*.csv` / `.parquet`) and/or report files (`reports/*.md`). Flags: outlet slugs, `--reports`, `--reports-only`, `--dry-run`.
+
+- **Google News normalization in `merge`** (`run.py` → `_cmd_merge`): GN rows are now normalized on the fly during a merge. The real outlet name is extracted from the `[OutletName]` prefix in `cuerpo` and written to `fuente`; the ` - OutletName |` suffix is stripped from `titulo`; `cuerpo` and `bajada` are cleared (they were just repeated title text, not article content).
+
+- **Query-aware filenames** (`scraper/output.py`): `save_articles()` now accepts a `queries` list. Files are named `{slug}_{query1}_{query2}_{YYYYMMDD_HHMMSS}.csv/.parquet`. If no query is supplied the format is unchanged. Both `BaseScraper` and `BaseApiScraper` pass `queries=queries` to the call.
+
+- **Log format** (`run.py`): replaced `logging.basicConfig` with a custom `_LevelTagFormatter`:
+  - Timestamps no longer include milliseconds (`2026-05-27 10:49:18` instead of `2026-05-27 10:49:18,936`)
+  - Startup lines show `[INIT]` instead of `[INFO]` (`base.py`, `base_api.py`)
+  - Save/export lines show `[EXPORT]` instead of `[INFO]` (`output.py`)
+  - Run-complete line shows `[DONE]` instead of `[INFO]` (`run.py`)
+
+### Files changed
+`run.py`, `scraper/output.py`, `scraper/base.py`, `scraper/base_api.py`, `INSTRUCTIONS.md`, `progress.md`
 
 ---
 

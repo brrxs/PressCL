@@ -33,7 +33,10 @@ class BaseApiScraper(abc.ABC):
         until = until or date.today()
         queries = [q for q in (queries or []) if q and q.strip()]
 
-        logger.info(f"[{self.SOURCE_SLUG}] since={since} until={until} queries={queries!r}")
+        logger.info(
+            f"[{self.SOURCE_SLUG}] since={since} until={until} queries={queries!r}",
+            extra={"tag": "INIT"},
+        )
 
         phrases = queries or [""]
         seen_urls: set[str] = set()
@@ -57,7 +60,7 @@ class BaseApiScraper(abc.ABC):
             a["query"] = query_label
 
         logger.info(f"[{self.SOURCE_SLUG}] {len(articles)} articles collected")
-        save_articles(articles, self.SOURCE_SLUG)
+        save_articles(articles, self.SOURCE_SLUG, queries=queries)
         return articles
 
     def _collect_for_phrase(self, phrase: str, since: date, until: date) -> list[dict]:

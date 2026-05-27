@@ -63,7 +63,10 @@ class BaseScraper(abc.ABC):
         until = until or date.today()
         queries = [q for q in (queries or []) if q and q.strip()]
 
-        logger.info(f"[{self.SOURCE_SLUG}] since={since} until={until} queries={queries!r}")
+        logger.info(
+            f"[{self.SOURCE_SLUG}] since={since} until={until} queries={queries!r}",
+            extra={"tag": "INIT"},
+        )
 
         if queries:
             all_urls: list[str] = []
@@ -93,7 +96,7 @@ class BaseScraper(abc.ABC):
 
         logger.info(f"[{self.SOURCE_SLUG}] {len(articles)} articles collected")
         if articles:
-            save_articles(articles, self.SOURCE_SLUG)
+            save_articles(articles, self.SOURCE_SLUG, queries=queries)
         return articles
 
     # --- URL collection ---
