@@ -323,6 +323,9 @@ Parallelism, live progress (`--progress`), auto-report, README all implemented a
 
 -**Merge**: with the addition of google news, the merge is outdate. GN has a unique format that needs to be harmonised with the rest. The cuerpo and bajada seems part of the same, consider merging it. a recurrent problem is the recurrent names of the outlets in the cuerpo and bajada section,. They're dennoted the following way: [OutletName]. Was thinking of merging into the same column the cuerpo and bajada and definig the name of the outlet form the [] name
 
+### Pending — Full article on GN (2026-05-27)
+- There's a way to extract full articules in the library (https://github.com/ranahaani/GNews#getting-full-article) i need to research it and see if i could apply it to the script
+
 ### Status: PRODUCTION READY (2026-05-22)
 All 15 outlets working. Parallel execution, live progress, auto-reports, and README in place.
 NoDate fix verified — new runs produce 0 NoDate for all outlets.
