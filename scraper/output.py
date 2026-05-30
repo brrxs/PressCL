@@ -46,11 +46,16 @@ def save_articles(
     return base
 
 
+def _flatten(v) -> str:
+    return re.sub(r"[\r\n]+", " ", str(v)) if isinstance(v, str) else v
+
+
 def _write_csv(articles: list[dict], path: Path) -> None:
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=SCHEMA, extrasaction="ignore")
         writer.writeheader()
-        writer.writerows(articles)
+        for row in articles:
+            writer.writerow({k: _flatten(v) for k, v in row.items()})
 
 
 def _write_parquet(articles: list[dict], path: Path) -> None:

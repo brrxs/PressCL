@@ -497,11 +497,15 @@ def _cmd_merge(args):
     csv_path = _CURATED_DIR / f"{stem}.csv"
     parquet_path = _CURATED_DIR / f"{stem}.parquet"
 
+    def _flatten(v):
+        return re.sub(r"[\r\n]+", " ", str(v)) if isinstance(v, str) else v
+
     # Write CSV
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=SCHEMA, extrasaction="ignore")
         writer.writeheader()
-        writer.writerows(rows)
+        for row in rows:
+            writer.writerow({k: _flatten(v) for k, v in row.items()})
 
     # Write Parquet
     data = {col: [r.get(col, "") or "" for r in rows] for col in SCHEMA}
