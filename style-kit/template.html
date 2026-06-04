@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Title</title>
+    <meta name="description" content="Page description">
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+
+    <!-- Earthy Academic stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- JetBrains Mono — primary typeface -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Prevent flash of wrong theme -->
+    <script>(function(){try{var t=localStorage.getItem('theme');document.documentElement.setAttribute('data-theme',t==='dark'||t==='light'?t:'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}})()</script>
+</head>
+<body class="bg-global-bg text-global-text antialiased">
+
+    <!-- ── Fixed Header ──────────────────────────────────────── -->
+    <header id="main-header" class="group">
+        <div class="header-grid">
+
+            <!-- Logo: replace img src with your own or inline SVG -->
+            <a href="#" class="group header-logo flex items-center">
+                <img src="assets/logo.svg" class="me-3 h-12 w-12 sm:me-4 sm:h-20 sm:w-20" alt="Logo">
+            </a>
+
+            <!-- Site name -->
+            <div class="header-title">
+                <span class="text-xl font-bold sm:text-2xl">Site Name</span>
+            </div>
+
+            <!-- Desktop + mobile nav (same element, CSS handles each breakpoint) -->
+            <nav class="mobile-nav-menu header-nav sm:flex sm:flex-row sm:items-center" id="navigation-menu">
+                <a href="#section-1">Section 1</a>
+                <a href="#section-2">Section 2</a>
+                <a href="#section-3">Section 3</a>
+            </nav>
+
+            <!-- Controls: theme toggle + mobile hamburger -->
+            <div class="header-controls flex items-center gap-3">
+
+                <!-- Theme toggle -->
+                <button id="theme-toggle"
+                    class="flex h-7 w-7 items-center justify-center rounded-md border p-1"
+                    aria-label="Switch to dark theme">
+                    <!-- Sun (shown in dark mode) -->
+                    <svg class="sun-icon h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
+                    </svg>
+                    <!-- Moon (shown in light mode) -->
+                    <svg class="moon-icon h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+                    </svg>
+                </button>
+
+                <!-- Hamburger (mobile only — hidden on ≥640px via sm:hidden) -->
+                <button id="toggle-navigation-menu"
+                    class="flex h-7 w-7 items-center justify-center rounded-md border p-1 sm:hidden"
+                    aria-expanded="false"
+                    aria-label="Toggle navigation menu">
+                    <!-- Open icon -->
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                    <!-- Close icon -->
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ── Main Content ───────────────────────────────────────── -->
+    <main class="mx-auto max-w-3xl px-4 sm:px-8">
+
+        <!-- Example section with prose content -->
+        <section id="section-1" class="mb-16">
+            <h2 class="title">Section 1</h2>
+            <div class="prose">
+                <p>Body text uses <strong>JetBrains Mono</strong> with the earthy palette.
+                   Links look <a href="#" class="cactus-link">like this</a>.</p>
+                <blockquote>Blockquotes use the ochre accent color.</blockquote>
+                <ul>
+                    <li>List item one</li>
+                    <li>List item two</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Example section with project cards -->
+        <section id="section-2" class="mb-16">
+            <h2 class="title">Project Cards</h2>
+            <div class="project-grid">
+                <div class="project-card">
+                    <h3>Card Title</h3>
+                    <p>Short description of the project or item.</p>
+                    <div class="project-links">
+                        <a href="#" class="cactus-link">Link →</a>
+                    </div>
+                </div>
+                <div class="project-card">
+                    <h3>Card Title</h3>
+                    <p>Short description of the project or item.</p>
+                    <div class="project-links">
+                        <a href="#" class="cactus-link">Link →</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Example section with publication card + tags -->
+        <section id="section-3" class="mb-16">
+            <h2 class="title">Publication Card</h2>
+            <div class="publication-card">
+                <div class="publication-image">
+                    <img src="assets/placeholder.jpg" alt="">
+                </div>
+                <div class="publication-content">
+                    <h3 class="publication-title">
+                        <a href="#" class="publication-link">Publication Title</a>
+                    </h3>
+                    <span class="publication-venue">Venue / Conference</span>
+                    <p class="publication-authors">Author One, Author Two</p>
+                    <p class="publication-description">Short abstract or description of the work.</p>
+                    <div class="publication-tags">
+                        <span class="tag tag-arxiv">arXiv</span>
+                        <span class="tag tag-conference">Conference</span>
+                        <span class="tag tag-notebook">Notebook</span>
+                        <span class="tag tag-github">GitHub</span>
+                        <span class="tag tag-data">Data</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contact links example -->
+        <div class="contact-links mb-16">
+            <a href="mailto:you@example.com">Email</a>
+            <a href="#">GitHub</a>
+            <a href="#">LinkedIn</a>
+        </div>
+
+    </main>
+
+    <!-- ── Footer ────────────────────────────────────────────── -->
+    <footer class="mx-auto max-w-3xl px-4 sm:px-8 py-8 text-center text-sm opacity-75">
+        <p>Your footer text here.</p>
+    </footer>
+
+    <!-- Theme toggle + mobile nav -->
+    <script src="theme.js"></script>
+
+    <!-- Mobile navigation (copy MobileNavigation class from the original script.js if needed) -->
+    <script>
+        // Minimal mobile nav — include full script.js instead if you need all features
+        document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('toggle-navigation-menu');
+            const header = document.getElementById('main-header');
+            if (!btn || !header) return;
+            btn.addEventListener('click', () => {
+                const open = btn.getAttribute('aria-expanded') === 'true';
+                btn.setAttribute('aria-expanded', String(!open));
+                header.classList.toggle('menu-open', !open);
+                document.body.classList.toggle('menu-open', !open);
+                document.body.style.overflow = open ? '' : 'hidden';
+            });
+            document.querySelectorAll('#navigation-menu a').forEach(a => {
+                a.addEventListener('click', () => {
+                    btn.setAttribute('aria-expanded', 'false');
+                    header.classList.remove('menu-open');
+                    document.body.classList.remove('menu-open');
+                    document.body.style.overflow = '';
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>

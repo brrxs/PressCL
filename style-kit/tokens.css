@@ -1,0 +1,31 @@
+/* Earthy Academic Palette — CSS Custom Properties
+   Import this file before styles.css if you want tokens only,
+   or skip it since styles.css already embeds these. */
+
+:root {
+    /* Light theme: Parchment / Terracotta / Ochre / Sage */
+    --color-global-bg:   #F5F0E8;          /* Parchment          */
+    --color-global-text: #3D2B1F;          /* Umber              */
+    --color-link:        #B8541C;          /* Terracotta — links */
+    --color-accent:      #B8541C;          /* Terracotta — CTAs, active states */
+    --color-accent-2:    #3D2B1F;          /* Umber              */
+    --color-quote:       #C9971A;          /* Ochre — highlights */
+    --color-supporting:  #5E7A6A;          /* Sage — tags, icons */
+    --color-border:      #C8BAA2;          /* Warm tan           */
+    --color-card-bg:     rgba(237, 228, 211, 0.85); /* Linen     */
+    --color-shadow:      rgba(61, 43, 31, 0.12);    /* Umber tint */
+}
+
+/* Dark theme: warm dark-brown evening variant */
+[data-theme="dark"] {
+    --color-global-bg:   #1E1510;          /* Deep umber         */
+    --color-global-text: #EDE4D3;          /* Linen              */
+    --color-link:        #E07A3A;          /* Bright terracotta  */
+    --color-accent:      #E07A3A;          /* Bright terracotta  */
+    --color-accent-2:    #F5F0E8;          /* Parchment          */
+    --color-quote:       #DFB040;          /* Bright ochre       */
+    --color-supporting:  #7FA694;          /* Lighter sage       */
+    --color-border:      #3E2A1C;          /* Dark warm border   */
+    --color-card-bg:     rgba(40, 28, 18, 0.85);    /* Dark card  */
+    --color-shadow:      rgba(0, 0, 0, 0.4);
+}
