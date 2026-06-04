@@ -1,0 +1,2 @@
+@echo off
+.venv\Scripts\streamlit run app.py
