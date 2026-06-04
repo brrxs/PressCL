@@ -6,3 +6,4 @@ datos/
 logs/*.log
 .env
 analisis/
+reports/
