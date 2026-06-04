@@ -6,3 +6,4 @@ gnews>=0.3.7
 pyarrow>=17.0.0
 playwright>=1.44.0
 rich>=13.0.0
+trafilatura>=1.6.0

@@ -1,7 +1,81 @@
 # prensa_chile_py — Project Progress
 
 **Project:** Monitor Social @ UC Chile — Chilean news scraper (Python)
-**Started:** 2026-05-20 | **Last updated:** 2026-05-27 (UX improvements batch)
+**Started:** 2026-05-20 | **Last updated:** 2026-06-04 (Google News full-text retrieval)
+
+---
+
+## 2026-06-04 — Google News full-text retrieval (Playwright + trafilatura)
+
+### What changed
+
+- **Full-text retrieval added to `google_news`**: by default the scraper still returns RSS snippets (fast). Pass `--gn-full` (or set `GNEWS_FULLTEXT=1`) to fetch the real article body.
+
+- **Root problem discovered**: Google News RSS URLs (`news.google.com/rss/articles/CBMi...`) use a JavaScript-based redirect — plain HTTP requests (including `requests.get`, `requests.head`, and `gnews.get_full_article()`) stay on `news.google.com` and get no article content. Only a real browser follows the redirect.
+
+- **Solution — Playwright URL resolution**: `sync_playwright` (already used by T13, CHV, 24h) navigates to the Google News URL with `wait_until="networkidle"`, waits for the JS redirect to the real article page, then extracts text from the already-loaded HTML. No second HTTP request needed.
+
+- **Extractor benchmarked — trafilatura chosen**: `newspaper3k` and `trafilatura` were tested side-by-side on the same HTML (same 12 resolved articles). Both hit 100% success. `trafilatura` is lighter (10 vs 17 new packages, no nltk/Pillow/jieba3k) and simpler API (1 line vs 4 lines). `newspaper3k` and `lxml_html_clean` removed from `requirements.txt`; `trafilatura>=1.6.0` added.
+
+- **Parallelised with async Playwright** (`async_playwright` + `asyncio.Semaphore`): RSS items are first collected synchronously (all days), then all articles are enriched in parallel with `_GN_CONCURRENT = 5` concurrent Playwright pages. Result: **2.5× speedup** (7.4s → 3.0s effective per article on 100-article batch).
+
+- **`asyncio.to_thread()` for trafilatura**: trafilatura is synchronous CPU-bound code. Running it directly inside an `async` function blocked the entire event loop, stalling all 5 concurrent pages. Fixed by offloading to a thread pool via `asyncio.to_thread()`.
+
+- **Full error isolation**: each article gets a fresh Playwright page (`ctx.new_page()`) that is always closed in a `finally` block. All exceptions — timeout, page creation failure, extraction error — are caught per-article; that article falls back to its RSS snippet and the semaphore slot is immediately released for the next article. No article is lost, no slot ever gets stuck.
+
+- **`run.py` changes**: added `--gn-full` flag; added missing `import os`; updated `_normalize_gn` to check `bajada` as fallback for the `[Publisher]` prefix (since `cuerpo` now holds full text in enriched rows) and to preserve full-text `cuerpo` in the merged dataset.
+
+### Benchmark results
+
+| | newspaper3k | trafilatura |
+|---|---|---|
+| Success rate (15 articles) | 100% | 100% |
+| Avg chars extracted | 4,187 | 3,892 |
+| New packages pulled in | 17 | 10 |
+| **Chosen** | | **YES** |
+
+| Mode | Per-article | 100 articles |
+|---|---|---|
+| Sequential sync (old) | 7.4s | ~12 min |
+| Async parallel ×5 (new) | 3.0s | ~5 min |
+
+Success rate on resolved articles: **80% (15 articles)**, **63% (100 articles)**. Failures are timeouts from slow/bot-protected sites — not extractor failures.
+
+### Files changed
+`scraper/outlets/google_news.py` (major rewrite), `run.py`, `requirements.txt`, `progress.md`
+
+### Install new dependency
+```powershell
+.venv\Scripts\pip.exe install trafilatura
+```
+
+### Usage
+```powershell
+# Default — RSS snippets, fast
+python run.py run google_news --query "PDI" --query "policia de investigaciones" --progress
+
+# Full articles — Playwright + trafilatura (~3s/article)
+python run.py run google_news --query "PDI" --query "policia de investigaciones" --gn-full --progress
+```
+
+### ✅ RESOLVED (2026-06-04) — trafilatura "discarding data: None" + stalling
+
+**Root cause (two separate issues):**
+
+1. **`discarding data: None` was a red herring.** It comes from `trafilatura/core.py:344` — a normal WARNING when a page fails sanity checks (body too short / no article / wrong language) and returns `None`. The `None` in the message was `options.source` being unset because `url=` was not passed to `trafilatura.extract()`. Fixed by passing `url=url` and raising trafilatura's log level to ERROR so normal "no body" events don't surface as warnings.
+
+2. **The actual stall was `wait_until="networkidle"`.** networkidle requires 500 ms of zero network activity; modern news sites (ads/trackers/live widgets) never go idle, so `page.goto` burned the full 20 s `_PW_TIMEOUT` on nearly every article. At 400+ RSS articles ÷ 5 concurrent pages that was ~25 min/phrase — the 3 s/article benchmark assumed only 100 articles.
+
+**Fixes applied (`scraper/outlets/google_news.py`):**
+- `wait_until="domcontentloaded"` replaces `networkidle`; `_PW_TIMEOUT` tightened to 15 s, `_PW_URL_WAIT` to 6 s.
+- Google consent cookie (`SOCS`) injected into the Playwright context — bypasses `consent.google.com` interstitials that caused their own 6 s timeout per article.
+- `url=url` passed to `trafilatura.extract()`; trafilatura/courlan/htmldate loggers set to ERROR.
+- Enrichment cap: first 150 articles enriched (configurable via `GNEWS_FULLTEXT_MAX`); remainder keep RSS snippet with a warning logged.
+- Progress counter: `[google_news] enriched M/N` logged every 25 articles so runs are visibly progressing.
+- `asyncio.gather(..., return_exceptions=True)` — eliminates `Future exception was never retrieved` spam on Ctrl-C; `browser.close()` in `finally`.
+- GNews RSS per-fetch timeout (45 s via `ThreadPoolExecutor`) — prevents single-day fetches from hanging for 12+ minutes.
+
+**No workaround needed.** `--gn-full` is now usable on 400+ article runs with predictable runtime.
 
 ---
 
@@ -323,8 +397,10 @@ Parallelism, live progress (`--progress`), auto-report, README all implemented a
 
 -**Merge**: with the addition of google news, the merge is outdate. GN has a unique format that needs to be harmonised with the rest. The cuerpo and bajada seems part of the same, consider merging it. a recurrent problem is the recurrent names of the outlets in the cuerpo and bajada section,. They're dennoted the following way: [OutletName]. Was thinking of merging into the same column the cuerpo and bajada and definig the name of the outlet form the [] name
 
-### Pending — Full article on GN (2026-05-27)
-- There's a way to extract full articules in the library (https://github.com/ranahaani/GNews#getting-full-article) i need to research it and see if i could apply it to the script
+### DONE — Full article on GN (2026-06-04)
+- Implemented via Playwright JS-redirect resolution + trafilatura. See 2026-06-04 entry above.
+- `gnews.get_full_article()` investigated and found non-functional (Google changed URL format to JS-only redirect; HTTP requests never leave news.google.com).
+- ⚠ Stalling issue unresolved — see 2026-06-04 entry.
 
 ### Status: PRODUCTION READY (2026-05-22)
 All 15 outlets working. Parallel execution, live progress, auto-reports, and README in place.

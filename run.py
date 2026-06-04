@@ -2,6 +2,7 @@ import argparse
 import logging
 import logging.handlers
 import multiprocessing
+import os
 import sys
 import time
 from datetime import date, timedelta
@@ -120,6 +121,9 @@ examples:
                        help="Parallel worker processes (default: min(outlets, 4))")
     p_run.add_argument("--progress", action="store_true",
                        help="Show a live rich progress table during scraping")
+    p_run.add_argument("--gn-full", action="store_true", dest="gn_full",
+                       help="Google News: fetch full article text via Playwright "
+                            "(slower; default is RSS snippet only)")
 
     # list
     subparsers.add_parser("list", help="List available outlets")
@@ -180,6 +184,8 @@ examples:
 
 
 def _cmd_run(args):
+    if getattr(args, "gn_full", False):
+        os.environ["GNEWS_FULLTEXT"] = "1"
     since, until = _resolve_dates(args)
     targets = args.outlets if args.outlets else list(REGISTRY)
     invalid = [s for s in targets if s not in REGISTRY]
@@ -434,11 +440,16 @@ def _cmd_merge(args):
     def _normalize_gn(row: dict) -> dict:
         if row.get("fuente") != "google_news":
             return row
-        m = _GN_PREFIX.match(row.get("cuerpo") or "")
-        if m:
-            row["fuente"] = m.group(1).rstrip(" |").strip()
+        # cuerpo has the prefix for legacy RSS-only rows; bajada has it for enriched rows
+        for field in ("cuerpo", "bajada"):
+            m = _GN_PREFIX.match(row.get(field) or "")
+            if m:
+                row["fuente"] = m.group(1).rstrip(" |").strip()
+                break
         row["titulo"] = _GN_SUFFIX.sub("", row.get("titulo") or "").strip()
-        row["cuerpo"] = ""
+        # Preserve full-text cuerpo; only clear it if it's still the short RSS snippet
+        if not row.get("cuerpo") or _GN_PREFIX.match(row.get("cuerpo") or ""):
+            row["cuerpo"] = ""
         row["bajada"] = ""
         return row
 
