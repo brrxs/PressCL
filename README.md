@@ -1,9 +1,9 @@
 <div align="center">
   <img src="app/style-kit/assets/logo.svg" alt="PressCL" width="140">
   <h1>PressCL</h1>
+  <a href="https://doi.org/10.5281/zenodo.20563693"><img src="https://zenodo.org/badge/1259735009.svg" alt="DOI"></a>
   <p>Aplicación para buscar noticias en medios chilenos</p>
 </div>
-[![DOI](https://zenodo.org/badge/1259735009.svg)](https://doi.org/10.5281/zenodo.20563693)
 
 
 > **Estado:** Proyecto personal, en uso activo pero sin mantenimiento activo. Issues bienvenidos; PRs revisados según disponibilidad. Los selectores de medios pueden romperse cuando los sitios rediseñan su HTML.
