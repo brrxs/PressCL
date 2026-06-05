@@ -6,8 +6,6 @@
 
 <a href="https://doi.org/10.5281/zenodo.20563693"><img src="https://zenodo.org/badge/1259735009.svg" alt="DOI"></a>
 
-[![DOI](https://zenodo.org/badge/1259735009.svg)](https://doi.org/10.5281/zenodo.20563693)
-
 > **Estado:** Proyecto personal, en uso activo pero sin mantenimiento activo. Issues bienvenidos; PRs revisados según disponibilidad. Los selectores de medios pueden romperse cuando los sitios rediseñan su HTML.
 
 Aplicación web para buscar archivos de noticias chilenas. Ingresa una palabra clave y un rango de fechas, elige tus medios y descarga un dataset estructurado, sin necesidad de programar.
