@@ -15,12 +15,14 @@ Documentación completa: [INSTRUCTIONS.md](app/INSTRUCTIONS.md)
 
 ## Descargas
 
-Descarga la última versión desde la página de [Releases](https://github.com/brrxsn/scraper-medios-chile/releases).
+**Última versión: [PressCL v0.3](https://github.com/brrxs/PressCL/releases/tag/v0.3)**
 
-1. Descarga el archivo `PressCL-vX.X.zip` de la versión más reciente
+1. Descarga el archivo `PressCL-v0.3.zip`
 2. Extrae la carpeta donde quieras tener la app
 3. Haz doble clic en `setup.bat` (solo la primera vez)
 4. Haz doble clic en el acceso directo **PressCL**
+
+Todas las versiones: [github.com/brrxs/PressCL/releases](https://github.com/brrxs/PressCL/releases)
 
 **Requisitos:** Python 3.10 o superior. Descargar desde [python.org](https://www.python.org/downloads/) marcando la opción "Add Python to PATH".
 

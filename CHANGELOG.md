@@ -54,6 +54,6 @@ First working release. CLI-only.
 
 ---
 
-[Unreleased]: https://github.com/brrxsn/scraper-medios-chile/compare/v0.2...HEAD
-[0.2]: https://github.com/brrxsn/scraper-medios-chile/compare/v0.1...v0.2
-[0.1]: https://github.com/brrxsn/scraper-medios-chile/releases/tag/v0.1
+[Unreleased]: https://github.com/brrxs/PressCL/compare/v0.2...HEAD
+[0.2]: https://github.com/brrxs/PressCL/compare/v0.1...v0.2
+[0.1]: https://github.com/brrxs/PressCL/releases/tag/v0.1
