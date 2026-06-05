@@ -1,12 +1,15 @@
 @echo off
 echo ============================================
-echo  Scraper de Prensa Chilena - Configuracion
+echo  PressCL - Configuracion
 echo ============================================
 echo.
 
-cd /d "%~dp0app"
+set ROOT=%~dp0
+set ROOT=%ROOT:~0,-1%
 
-echo [1/3] Creando entorno virtual...
+cd /d "%ROOT%\app"
+
+echo [1/4] Creando entorno virtual...
 python -m venv .venv
 if errorlevel 1 (
     echo ERROR: No se pudo crear el entorno virtual.
@@ -15,7 +18,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [2/3] Instalando dependencias...
+echo [2/4] Instalando dependencias...
 .venv\Scripts\pip install -r requirements.txt streamlit pandas --quiet
 if errorlevel 1 (
     echo ERROR: Fallo la instalacion de dependencias.
@@ -23,7 +26,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [3/3] Instalando navegador Chromium para Playwright...
+echo [3/4] Instalando navegador Chromium para Playwright...
 .venv\Scripts\python -m playwright install chromium
 if errorlevel 1 (
     echo ERROR: Fallo la instalacion de Playwright.
@@ -31,8 +34,20 @@ if errorlevel 1 (
     exit /b 1
 )
 
+echo [4/4] Creando acceso directo PressCL...
+powershell -NoProfile -Command ^
+  "$root = '%ROOT%'; ^
+   $ws = New-Object -ComObject WScript.Shell; ^
+   $sc = $ws.CreateShortcut($root + '\PressCL.lnk'); ^
+   $sc.TargetPath = 'wscript.exe'; ^
+   $sc.Arguments = '\"' + $root + '\app\launch.vbs\"'; ^
+   $sc.WorkingDirectory = $root + '\app'; ^
+   $sc.Description = 'PressCL'; ^
+   $sc.IconLocation = $root + '\app\style-kit\assets\favicon.ico,0'; ^
+   $sc.Save()"
+
 echo.
 echo ============================================
-echo  Listo. Ejecuta launch.bat para abrir la app.
+echo  Listo. Abre PressCL para iniciar la app.
 echo ============================================
 pause

@@ -222,7 +222,10 @@ if run_btn:
         rows = [{"Medio": s, "Estado": e, "Artículos": n} for s, (e, n) in status.items()]
         df = pd.DataFrame(rows)
         styled = df.style.map(_color_estado, subset=["Estado"])
-        table_slot.dataframe(styled, hide_index=True, use_container_width=True)
+        row_height = 35
+        header_height = 38
+        table_slot.dataframe(styled, hide_index=True, use_container_width=True,
+                             height=header_height + row_height * len(rows))
 
     _refresh()
 

@@ -1,0 +1,29 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Data outputs
+datos/
+logs/*.log
+reports/
+analisis/
+
+# Secrets
+.env
+.streamlit/secrets.toml
+
+# Lock files (keep requirements-lock.txt, ignore pip state files)
+*.lock
+pip-*.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
