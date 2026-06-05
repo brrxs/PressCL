@@ -11,6 +11,18 @@ Aplicación web para buscar archivos de noticias chilenas. Ingresa una palabra c
 
 Documentación completa: [INSTRUCTIONS.md](app/INSTRUCTIONS.md)
 
+---
+
+## Descargas
+
+Descarga la última versión desde la página de [Releases](https://github.com/brrxsn/scraper-medios-chile/releases).
+
+1. Descarga el archivo `PressCL-vX.X.zip` de la versión más reciente
+2. Extrae la carpeta donde quieras tener la app
+3. Haz doble clic en `setup.bat` (solo la primera vez)
+4. Haz doble clic en el acceso directo **PressCL**
+
+**Requisitos:** Python 3.10 o superior. Descargar desde [python.org](https://www.python.org/downloads/) marcando la opción "Add Python to PATH".
 
 ---
 
