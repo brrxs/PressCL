@@ -11,6 +11,8 @@ Aplicación web para buscar archivos de noticias chilenas. Ingresa una palabra c
 
 Documentación completa: [INSTRUCTIONS.md](app/INSTRUCTIONS.md)
 
+<img src="app/style-kit/presscl.gif" alt="PressCL demo" width="700">
+
 ---
 
 ## Descargas
