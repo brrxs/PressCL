@@ -3,6 +3,7 @@
   <h1>PressCL</h1>
   <p>Aplicación para buscar noticias en medios chilenos</p>
 </div>
+[![DOI](https://zenodo.org/badge/1259735009.svg)](https://doi.org/10.5281/zenodo.20563693)
 
 
 > **Estado:** Proyecto personal, en uso activo pero sin mantenimiento activo. Issues bienvenidos; PRs revisados según disponibilidad. Los selectores de medios pueden romperse cuando los sitios rediseñan su HTML.
@@ -13,13 +14,8 @@ Documentación completa: [INSTRUCTIONS.md](app/INSTRUCTIONS.md)
 
 <img src="app/style-kit/presscl.gif" alt="PressCL demo" width="700">
 
----
 
-## Citar
-
-Si usas PressCL en tu investigación o trabajo, por favor cítalo:
-
-[![DOI](https://zenodo.org/badge/1259735009.svg)](https://doi.org/10.5281/zenodo.20563693)
+Si usas PressCL en tu investigación o trabajo, por favor cítalo de la siguiente manera:
 
 > Barrientos, T. (2026). *PressCL: Aplicación para buscar noticias en medios chilenos* (v0.3). Zenodo. https://doi.org/10.5281/zenodo.20563693
 
