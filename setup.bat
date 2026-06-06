@@ -35,16 +35,7 @@ if errorlevel 1 (
 )
 
 echo [4/4] Creando acceso directo PressCL...
-powershell -NoProfile -Command ^
-  "$root = '%ROOT%'; ^
-   $ws = New-Object -ComObject WScript.Shell; ^
-   $sc = $ws.CreateShortcut($root + '\PressCL.lnk'); ^
-   $sc.TargetPath = 'wscript.exe'; ^
-   $sc.Arguments = '\"' + $root + '\app\launch.vbs\"'; ^
-   $sc.WorkingDirectory = $root + '\app'; ^
-   $sc.Description = 'PressCL'; ^
-   $sc.IconLocation = $root + '\app\style-kit\assets\favicon.ico,0'; ^
-   $sc.Save()"
+powershell -NoProfile -Command "& { $root = '%ROOT%'; $ws = New-Object -ComObject WScript.Shell; $sc = $ws.CreateShortcut($root + '\PressCL.lnk'); $sc.TargetPath = 'wscript.exe'; $sc.Arguments = [char]34 + $root + '\app\launch.vbs' + [char]34; $sc.WorkingDirectory = $root + '\app'; $sc.Description = 'PressCL'; $sc.IconLocation = $root + '\app\style-kit\assets\favicon.ico,0'; $sc.Save() }"
 
 echo.
 echo ============================================
