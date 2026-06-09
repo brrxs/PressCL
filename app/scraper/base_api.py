@@ -8,7 +8,7 @@ from typing import Optional
 import requests
 
 from scraper.output import save_articles
-from scraper.utils import any_phrase_matches, parse_date
+from scraper.utils import any_phrase_matches, bare_term, parse_date
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,7 @@ class BaseApiScraper(abc.ABC):
     DELAY_MAX: float = 1.5
     REQUEST_TIMEOUT: int = 20
     HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; prensa_chile_py/1.0)"}
+    _session: Optional[requests.Session] = None
 
     def run(
         self,
@@ -42,18 +43,23 @@ class BaseApiScraper(abc.ABC):
         seen_urls: set[str] = set()
         articles: list[dict] = []
 
-        for phrase in phrases:
-            phrase_articles = self._collect_for_phrase(phrase, since, until)
-            for article in phrase_articles:
-                url = article.get("url") or ""
-                if url and url in seen_urls:
-                    continue
-                if queries and not any_phrase_matches(
-                    (article.get("titulo") or "") + " " + (article.get("cuerpo") or ""), queries
-                ):
-                    continue
-                seen_urls.add(url)
-                articles.append(article)
+        self._session = requests.Session()
+        try:
+            for phrase in phrases:
+                phrase_articles = self._collect_for_phrase(phrase, since, until)
+                for article in phrase_articles:
+                    url = article.get("url") or ""
+                    if url and url in seen_urls:
+                        continue
+                    if queries and not any_phrase_matches(
+                        (article.get("titulo") or "") + " " + (article.get("cuerpo") or ""), queries
+                    ):
+                        continue
+                    seen_urls.add(url)
+                    articles.append(article)
+        finally:
+            self._session.close()
+            self._session = None
 
         query_label = ", ".join(queries)
         for a in articles:
@@ -66,8 +72,9 @@ class BaseApiScraper(abc.ABC):
     def _collect_for_phrase(self, phrase: str, since: date, until: date) -> list[dict]:
         results: list[dict] = []
         offset = 0
+        search = bare_term(phrase)
         while offset < HARD_OFFSET_CAP:
-            raw_batch = self._fetch_page(phrase, offset)
+            raw_batch = self._fetch_page(search, offset)
             if not raw_batch:
                 break
 
@@ -106,7 +113,7 @@ class BaseApiScraper(abc.ABC):
 
     def _get(self, url: str, params: dict, headers: Optional[dict] = None) -> Optional[dict]:
         try:
-            resp = requests.get(
+            resp = (self._session or requests).get(
                 url,
                 params=params,
                 headers=headers or self.HEADERS,

@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 
 from scraper.base import HARD_PAGE_CAP
 from scraper.base_playwright import BasePlaywrightScraper
+from scraper.utils import bare_term
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ class ChvNoticiasScraper(BasePlaywrightScraper):
         return quote(phrase, safe="")  # slug-style path needs %20, not +
 
     def _collect_urls_search(self, phrase: str, since: date, until: date) -> list[str]:
-        q = self._encode_query(phrase)
+        q = self._encode_query(bare_term(phrase))
         urls: list[str] = []
         for pg in range(1, HARD_PAGE_CAP + 1):
             # Page 1: /search/{query}/  — Page 2+: /search/{query}/page/{n}/

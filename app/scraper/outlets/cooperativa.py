@@ -13,6 +13,7 @@ from typing import Optional
 from bs4 import BeautifulSoup
 
 from scraper.base import HARD_PAGE_CAP, BaseScraper
+from scraper.utils import bare_term
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ class CooperativaScraper(BaseScraper):
         urls: list[str] = []
         for page in range(1, HARD_PAGE_CAP + 1):
             params = dict(_SEARCH_DEFAULTS)
-            params["search_texto"] = phrase
+            params["search_texto"] = bare_term(phrase)
             params["search_pag"] = page
             try:
                 resp = requests.get(

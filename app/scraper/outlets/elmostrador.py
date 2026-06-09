@@ -4,7 +4,7 @@ from scraper.base import BaseScraper
 class ElMostradorScraper(BaseScraper):
     SOURCE_SLUG = "elmostrador"
     INDEX_URL_TEMPLATE = "https://www.elmostrador.cl/noticias/pais/?paged={page}"
-    SEARCH_URL_TEMPLATE = "https://www.elmostrador.cl/?s={query}&paged={page}"
+    SEARCH_URL_TEMPLATE = "https://www.elmostrador.cl/?s={query}&orderby=date&order=DESC&paged={page}"
 
     @property
     def link_selector(self): return "a[href*='elmostrador.cl/noticias/'][href*='/20']"

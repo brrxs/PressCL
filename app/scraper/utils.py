@@ -76,8 +76,26 @@ def normalize(text: str) -> str:
     return "".join(c for c in nfkd if not unicodedata.combining(c))
 
 
+def bare_term(phrase: str) -> str:
+    """Return phrase with surrounding double-quotes stripped (for URL/API search use)."""
+    if phrase.startswith('"') and phrase.endswith('"') and len(phrase) >= 3:
+        return phrase[1:-1]
+    return phrase
+
+
+def _exact_match(inner: str, text: str) -> bool:
+    """Case-sensitive whole-word/phrase match for double-quoted terms."""
+    return bool(re.search(r"\b" + re.escape(inner) + r"\b", text))
+
+
 def phrase_matches(text: str, phrase: str) -> bool:
-    """True if every word of phrase appears in text (accent-insensitive, AND logic)."""
+    """True if phrase matches text.
+
+    Wrap a term in double quotes (e.g. "CAE") for case-sensitive whole-word matching.
+    Otherwise matches accent- and case-insensitively with AND logic across words.
+    """
+    if phrase.startswith('"') and phrase.endswith('"') and len(phrase) >= 3:
+        return _exact_match(phrase[1:-1], text)
     haystack = normalize(text)
     return all(normalize(w) in haystack for w in phrase.split())
 

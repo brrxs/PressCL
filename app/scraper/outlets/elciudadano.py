@@ -8,7 +8,7 @@ from scraper.base import BaseScraper
 class ElCiudadanoScraper(BaseScraper):
     SOURCE_SLUG = "elciudadano"
     INDEX_URL_TEMPLATE = "https://www.elciudadano.com/page/{page}"
-    SEARCH_URL_TEMPLATE = "https://www.elciudadano.com/?s={query}&paged={page}"
+    SEARCH_URL_TEMPLATE = "https://www.elciudadano.com/?s={query}&orderby=date&order=DESC&paged={page}"
 
     @property
     def link_selector(self): return "article a[href*='elciudadano.com']"

@@ -12,6 +12,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from scraper import cache
 from scraper.outlets import REGISTRY
 from scraper.output import SCHEMA
 
@@ -110,7 +111,8 @@ with st.sidebar:
         help=(
             "Separa términos con comas.\n\n"
             "· reforma pensiones → busca esa frase exacta\n"
-            "· reforma, pensiones → busca cada término por separado\n\n"
+            "· reforma, pensiones → busca cada término por separado\n"
+            '· "CAE" → distingue mayúsculas (palabra exacta, entre comillas)\n\n'
             "Vacío = trae todo lo del período sin filtro."
         ),
     )
@@ -184,6 +186,24 @@ with st.sidebar:
                 for item in datos_path.iterdir():
                     shutil.rmtree(item) if item.is_dir() else item.unlink()
             st.success("Base de datos limpiada.")
+            st.rerun()
+
+        st.markdown("<hr style='margin:0.3rem 0'>", unsafe_allow_html=True)
+        n_cached = cache.count()
+        mb_cache = cache.db_size_bytes() / 1_048_576
+        st.caption(f"Caché de artículos: {n_cached} · {mb_cache:.1f} MB")
+        if st.button(
+            "Limpiar caché de artículos",
+            use_container_width=True,
+            help=(
+                "Los artículos ya scrapeados se guardan en una caché local permanente "
+                "(app/.cache/) y se sirven desde ahí en vez de volver a pedirlos al medio.\n\n"
+                "Límpiala sólo si necesitas forzar una re-descarga (p. ej. si crees que un "
+                "artículo fue corregido o actualizado)."
+            ),
+        ):
+            removed = cache.clear()
+            st.success(f"Caché limpiada ({removed} artículos).")
             st.rerun()
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -300,7 +320,7 @@ if st.session_state.articles:
 
     fname = f"prensa_chile_{date.today().strftime('%Y%m%d')}.csv"
     st.download_button(
-        "⬇  Descargar CSV",
+        "Descargar CSV",
         data=buf.getvalue().encode("utf-8"),
         file_name=fname,
         mime="text/csv",

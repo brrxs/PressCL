@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.4] — 2026-06-09
+
+### Added
+- **Permanent article cache** (`scraper/cache.py`): articles scraped once are stored in a local SQLite database (`.cache/articles.sqlite`) and served from there on subsequent runs, never re-requesting the same article from the medium.
+- **Case-sensitive search via quoted terms**: wrapping a term in double quotes (e.g. `"CAE"`) matches it case-sensitively as a whole word/phrase; unquoted terms remain accent- and case-insensitive as before.
+
+### Changed
+- **Date-aware pagination stop**: listing and search page collection halts as soon as all links on a page pre-date the `since` window, avoiding unnecessary requests to media sites.
+- **HTTP keep-alive**: `BaseScraper` and `BaseApiScraper` now reuse TCP/TLS connections via `requests.Session`, reducing connection overhead on each scraping run.
+
+---
+
 ## [0.3] — 2026-06-05
 
 ### Changed
@@ -58,6 +70,7 @@ First working release. CLI-only.
 
 ---
 
+[0.4]: https://github.com/brrxs/PressCL/compare/v0.3...v0.4
 [0.3]: https://github.com/brrxs/PressCL/compare/v0.2...v0.3
 [0.2]: https://github.com/brrxs/PressCL/compare/v0.1...v0.2
 [0.1]: https://github.com/brrxs/PressCL/releases/tag/v0.1

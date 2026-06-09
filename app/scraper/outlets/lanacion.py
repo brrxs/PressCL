@@ -5,7 +5,7 @@ class LaNacionScraper(BaseScraper):
     SOURCE_SLUG = "lanacion"
     REQUEST_TIMEOUT = 10  # site hangs connections; fail fast
     INDEX_URL_TEMPLATE = "https://www.lanacion.cl/category/pais/page/{page}"
-    SEARCH_URL_TEMPLATE = "https://www.lanacion.cl/?s={query}&paged={page}"
+    SEARCH_URL_TEMPLATE = "https://www.lanacion.cl/?s={query}&orderby=date&order=DESC&paged={page}"
 
     @property
     def link_selector(self): return ".entry-title a"

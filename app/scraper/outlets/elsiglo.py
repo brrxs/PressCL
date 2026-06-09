@@ -4,7 +4,7 @@ from scraper.base import BaseScraper
 class ElSigloScraper(BaseScraper):
     SOURCE_SLUG = "elsiglo"
     INDEX_URL_TEMPLATE = "https://elsiglo.cl/category/pais/page/{page}"
-    SEARCH_URL_TEMPLATE = "https://elsiglo.cl/?s={query}&paged={page}"
+    SEARCH_URL_TEMPLATE = "https://elsiglo.cl/?s={query}&orderby=date&order=DESC&paged={page}"
 
     @property
     def link_selector(self): return ".entry-title a"

@@ -10,8 +10,9 @@ from urllib.parse import quote, quote_plus
 import requests
 from bs4 import BeautifulSoup
 
+from scraper import cache
 from scraper.output import save_articles
-from scraper.utils import any_phrase_matches, clean_text, parse_date
+from scraper.utils import any_phrase_matches, bare_term, clean_text, parse_date
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ class BaseScraper(abc.ABC):
     DELAY_MAX: float = 3.5
     REQUEST_TIMEOUT: int = 20
     HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; prensa_chile_py/1.0; +https://github.com)"}
+    _session: Optional[requests.Session] = None
 
     # --- Selectors (subclasses must define) ---
 
@@ -68,36 +70,41 @@ class BaseScraper(abc.ABC):
             extra={"tag": "INIT"},
         )
 
-        if queries:
-            all_urls: list[str] = []
-            for phrase in queries:
-                phrase_urls = self._collect_urls_search(phrase, since, until)
-                logger.info(f"[{self.SOURCE_SLUG}] search phrase={phrase!r} -> {len(phrase_urls)} URLs")
-                all_urls.extend(phrase_urls)
-            all_urls = list(dict.fromkeys(all_urls))
+        self._session = requests.Session()
+        try:
+            if queries:
+                all_urls: list[str] = []
+                for phrase in queries:
+                    phrase_urls = self._collect_urls_search(phrase, since, until)
+                    logger.info(f"[{self.SOURCE_SLUG}] search phrase={phrase!r} -> {len(phrase_urls)} URLs")
+                    all_urls.extend(phrase_urls)
+                all_urls = list(dict.fromkeys(all_urls))
 
-            if not all_urls:
-                logger.info(f"[{self.SOURCE_SLUG}] all searches empty, falling back to feed + filter")
-                all_urls = self._collect_urls_feed(since, until)
+                if not all_urls:
+                    logger.info(f"[{self.SOURCE_SLUG}] all searches empty, falling back to feed + filter")
+                    all_urls = self._collect_urls_feed(since, until)
 
-            articles = self._scrape_urls(all_urls)
-            articles = [a for a in articles if any_phrase_matches(
-                (a.get("titulo") or "") + " " + (a.get("cuerpo") or ""), queries
-            )]
-        else:
-            urls = self._collect_urls_feed(since, until)
-            articles = self._scrape_urls(urls)
+                articles = self._scrape_urls(all_urls)
+                articles = [a for a in articles if any_phrase_matches(
+                    (a.get("titulo") or "") + " " + (a.get("cuerpo") or ""), queries
+                )]
+            else:
+                urls = self._collect_urls_feed(since, until)
+                articles = self._scrape_urls(urls)
 
-        # Final date filter (belt-and-suspenders)
-        articles = [a for a in articles if _in_window(a.get("fecha"), since, until)]
-        query_label = ", ".join(queries)
-        for a in articles:
-            a["query"] = query_label
+            # Final date filter (belt-and-suspenders)
+            articles = [a for a in articles if _in_window(a.get("fecha"), since, until)]
+            query_label = ", ".join(queries)
+            for a in articles:
+                a["query"] = query_label
 
-        logger.info(f"[{self.SOURCE_SLUG}] {len(articles)} articles collected")
-        if articles:
-            save_articles(articles, self.SOURCE_SLUG, queries=queries)
-        return articles
+            logger.info(f"[{self.SOURCE_SLUG}] {len(articles)} articles collected")
+            if articles:
+                save_articles(articles, self.SOURCE_SLUG, queries=queries)
+            return articles
+        finally:
+            self._session.close()
+            self._session = None
 
     # --- URL collection ---
 
@@ -110,7 +117,7 @@ class BaseScraper(abc.ABC):
     def _collect_urls_search(self, phrase: str, since: date, until: date) -> list[str]:
         if not self.SEARCH_URL_TEMPLATE:
             return []
-        q = self._encode_query(phrase)
+        q = self._encode_query(bare_term(phrase))
         urls: list[str] = []
         for page in range(1, HARD_PAGE_CAP + 1):
             page_url = self.SEARCH_URL_TEMPLATE.format(query=q, page=page)
@@ -126,6 +133,9 @@ class BaseScraper(abc.ABC):
                     )
                 break
             urls.extend(links)
+            dated = [d for d in (_date_from_url(u) for u in links) if d is not None]
+            if dated and len(dated) == len(links) and all(d < since for d in dated):
+                break
             self._polite_delay()
         return list(dict.fromkeys(urls))
 
@@ -140,6 +150,9 @@ class BaseScraper(abc.ABC):
             if not links:
                 break
             urls.extend(links)
+            dated = [d for d in (_date_from_url(u) for u in links) if d is not None]
+            if dated and len(dated) == len(links) and all(d < since for d in dated):
+                break
             self._polite_delay()
         return list(dict.fromkeys(urls))
 
@@ -150,7 +163,14 @@ class BaseScraper(abc.ABC):
         articles = []
         past_cutoff_count = 0
         for url in urls:
-            result = self._scrape_article_safe(url)
+            cached = cache.get(url)
+            if cached is not None:
+                result = cached
+            else:
+                result = self._scrape_article_safe(url)
+                if result:
+                    cache.put(result)
+                self._polite_delay()
             if result:
                 articles.append(result)
                 if result.get("fecha"):
@@ -163,7 +183,6 @@ class BaseScraper(abc.ABC):
                             break
                     else:
                         past_cutoff_count = 0
-            self._polite_delay()
         return articles
 
     def _scrape_article_safe(self, url: str) -> Optional[dict]:
@@ -216,7 +235,7 @@ class BaseScraper(abc.ABC):
 
     def _fetch(self, url: str) -> Optional[BeautifulSoup]:
         try:
-            resp = requests.get(url, headers=self.HEADERS, timeout=self.REQUEST_TIMEOUT)
+            resp = (self._session or requests).get(url, headers=self.HEADERS, timeout=self.REQUEST_TIMEOUT)
             if resp.status_code != 200:
                 logger.debug(f"[{self.SOURCE_SLUG}] HTTP {resp.status_code} {url}")
                 return None
@@ -280,6 +299,17 @@ class BaseScraper(abc.ABC):
 
     def _polite_delay(self):
         time.sleep(random.uniform(self.DELAY_MIN, self.DELAY_MAX))
+
+
+def _date_from_url(url: str) -> Optional[date]:
+    """Extract date from URLs with /YYYY/MM/DD/ pattern."""
+    m = re.search(r"/(\d{4})/(\d{2})/(\d{2})/", url)
+    if m:
+        try:
+            return date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        except ValueError:
+            pass
+    return None
 
 
 def _in_window(fecha_str: Optional[str], since: date, until: date) -> bool:

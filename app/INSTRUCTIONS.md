@@ -10,7 +10,7 @@ Double-click the **PressCL** shortcut on your desktop. The app opens in your bro
 
 ### 2. Enter your search
 
-- **Query** — the keyword or phrase to search (e.g. `reforma pensiones`, `Boric`). Use quotes for exact phrases.
+- **Query** — the keyword or phrase to search (e.g. `reforma pensiones`, `Boric`). Wrap a term in double quotes (e.g. `"CAE"`) to match it case-sensitively as a whole word.
 - **Date range** — pick a start and end date. The app searches articles published within that window.
 - **Outlets** — all 16 are selected by default. Uncheck any you don't need.
 - **Workers** — how many outlets to scrape in parallel (default: 4). Higher = faster, but heavier on your machine.
@@ -28,6 +28,20 @@ Once the run completes, use the download buttons to save your dataset as **CSV**
 To search for name variants or related terms at once, add multiple queries (one per line in the query box). Within each phrase, all words must appear (AND). Across phrases, any match keeps the article (OR).
 
 Example: searching `Mara Sedini` and `Sedini` separately returns articles that mention either form.
+
+### 6. Case-sensitive search
+
+Wrap a term in double quotes to match it case-sensitively as a whole word:
+
+- `"CAE"` — matches only the uppercase acronym, not `cae` or `Cae`
+- `"Ley Corta"` — matches this exact casing only
+- Mix freely: `"CAE", pensiones reforma` searches case-sensitive `"CAE"` **or** accent-insensitive `pensiones reforma`
+
+**CLI:** single-quote the argument so the shell passes the literal double quotes:
+
+```powershell
+python run.py run --query '"CAE"' --days 30
+```
 
 ---
 

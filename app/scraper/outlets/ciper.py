@@ -11,7 +11,7 @@ _RE_DATE = re.compile(r"/(\d{4})/(\d{2})/(\d{2})/")
 class CiperScraper(BaseScraper):
     SOURCE_SLUG = "ciper"
     INDEX_URL_TEMPLATE = "https://www.ciperchile.cl/actualidad/page/{page}"
-    SEARCH_URL_TEMPLATE = "https://www.ciperchile.cl/?s={query}&paged={page}"
+    SEARCH_URL_TEMPLATE = "https://www.ciperchile.cl/?s={query}&orderby=date&order=DESC&paged={page}"
 
     @property
     def link_selector(self): return "a.alticle-link"  # typo is in their source HTML

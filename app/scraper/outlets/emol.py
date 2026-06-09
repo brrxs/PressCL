@@ -1,7 +1,11 @@
 from datetime import datetime
+from html import unescape
 from typing import Optional
 
+from bs4 import BeautifulSoup
+
 from scraper.base_api import BaseApiScraper
+from scraper.utils import clean_text
 
 API_BASE = "https://newsapi.ecn.cl/NewsApi/emol/buscador/emol"
 
@@ -20,10 +24,15 @@ class EmolScraper(BaseApiScraper):
             return []
 
     def _map_article(self, raw: dict) -> Optional[dict]:
-        titulo = raw.get("titulo", "")
-        cuerpo = raw.get("texto", "")
+        titulo = unescape(raw.get("titulo") or "")
+        texto_raw = raw.get("texto") or ""
+
         if not titulo or len(titulo) < 20:
             return None
+
+        # texto contains HTML markup — extract plain text
+        cuerpo = BeautifulSoup(unescape(texto_raw), "lxml").get_text(separator=" ", strip=True)
+
         if not cuerpo or len(cuerpo) < 400:
             return None
 
@@ -37,13 +46,18 @@ class EmolScraper(BaseApiScraper):
             except Exception:
                 pass
 
-        bajada = raw.get("bajada")
-        if isinstance(bajada, (dict, list)):
+        bajada_raw = raw.get("bajada")
+        if isinstance(bajada_raw, list):
+            bajada = unescape(" ".join(item.get("texto", "") for item in bajada_raw if isinstance(item, dict)))
+            bajada = clean_text(bajada) or None
+        elif isinstance(bajada_raw, str):
+            bajada = clean_text(unescape(bajada_raw)) or None
+        else:
             bajada = None
 
         return {
-            "titulo": titulo,
-            "cuerpo": cuerpo,
+            "titulo": clean_text(titulo),
+            "cuerpo": clean_text(cuerpo),
             "bajada": bajada,
             "fecha": fecha,
             "fuente": self.SOURCE_SLUG,

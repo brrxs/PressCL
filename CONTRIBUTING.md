@@ -103,6 +103,16 @@ Then do a short live scrape:
 python run.py run myoutlet --query "prueba" --days 3 --progress
 ```
 
+## Known issues
+
+### `python run.py check eldesconcierto` — false BROKEN on date/body selectors
+
+The `check` command picks the first raw `<a>` tag on the index page, which for eldesconcierto is a tag/topic page (e.g. `/ley-miscelanea-a178`), not an article. Tag pages have no article date or body, so `date_selector` and `body_selector` report BROKEN. This is a limitation of the `check` command, not the outlet. The actual data collection works correctly because `_collect_urls_feed` filters to article URLs via `_ARTICLE_RE` before scraping. You can verify by fetching a real article URL directly: `python run.py check eldesconcierto` will always show BROKEN, but a query run (`python run.py run eldesconcierto --query "..." --days 7`) will return articles normally.
+
+### `python run.py check emol` — WARN on first item
+
+The emol API occasionally returns a stub article at position 0 whose `texto` field is `&nbsp;` or another near-empty value (< 400 characters). `_map_article` correctly rejects it, which surfaces as `WARN — first item failed _map_article validation`. This is expected behavior, not a bug. Subsequent items in the batch are mapped normally.
+
 ## Reporting broken selectors
 
 If an outlet stops returning articles, it likely means the site redesigned their HTML. Open an issue with:

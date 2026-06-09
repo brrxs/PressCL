@@ -109,6 +109,9 @@ PressCL está diseñado para uso periodístico e investigativo sobre contenido d
 
 - Las solicitudes están limitadas a 1,5–3,5 segundos entre páginas por medio.
 - El scraping está limitado a 50 páginas por búsqueda.
+- **Los artículos ya scrapeados se guardan en una caché local** y se sirven desde ahí en búsquedas posteriores, sin volver a solicitarlos al medio.
+- La paginación se detiene automáticamente al salir de la ventana de fechas solicitada, evitando descargas innecesarias.
+- Se reutilizan las conexiones HTTP (keep-alive) para reducir la carga de conexión sobre los servidores.
 - El usuario es responsable de cumplir con los términos de uso de cada medio.
 - Esta herramienta no sortea paywalls ni accede a contenido restringido.
 

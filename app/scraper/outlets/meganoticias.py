@@ -8,7 +8,7 @@ from scraper.base import BaseScraper
 class MegaNoticiasScraper(BaseScraper):
     SOURCE_SLUG = "meganoticias"
     INDEX_URL_TEMPLATE = "https://www.meganoticias.cl/nacional/page/{page}"
-    SEARCH_URL_TEMPLATE = "https://www.meganoticias.cl/?s={query}&paged={page}"
+    SEARCH_URL_TEMPLATE = "https://www.meganoticias.cl/?s={query}&orderby=date&order=DESC&paged={page}"
 
     @property
     def link_selector(self): return "a[href*='meganoticias.cl/'][href$='.html']"
