@@ -12,7 +12,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from scraper import cache
+from scraper import cache, ratelimit
 from scraper.outlets import REGISTRY
 from scraper.output import SCHEMA
 
@@ -82,6 +82,30 @@ if "articles" not in st.session_state:
     st.session_state.articles = []
 if "run_meta" not in st.session_state:
     st.session_state.run_meta = None
+if "disclaimer_ok" not in st.session_state:
+    st.session_state.disclaimer_ok = False
+
+# ── Responsible-use disclaimer ────────────────────────────────────────────────
+if not st.session_state.disclaimer_ok:
+    st.warning("Debes aceptar las condiciones antes de usar la herramienta.")
+    st.markdown("## Uso responsable")
+    st.markdown(
+        """
+        Esta herramienta extrae contenido de medios de prensa chilenos con fines de
+        **investigación y uso personal**. Al usarla, aceptas:
+
+        - Respetar los **términos de uso** de cada medio.
+        - No generar carga excesiva ni automatizar ejecuciones de forma abusiva.
+        - Ser responsable del **uso que hagas de los datos** obtenidos.
+        - No redistribuir el contenido scrapeado sin autorización de cada medio.
+
+        El desarrollador no se responsabiliza por el uso indebido de la herramienta.
+        """
+    )
+    if st.button("Acepto", type="primary", use_container_width=True):
+        st.session_state.disclaimer_ok = True
+        st.rerun()
+    st.stop()
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -154,13 +178,20 @@ with st.sidebar:
                  "Por defecto sólo trae el extracto RSS.",
         )
 
-    run_disabled = not selected_outlets or since > until
+    runs_used = ratelimit.count_last_hour()
+    limit_hit = runs_used >= ratelimit.MAX_RUNS_PER_HOUR
+    run_disabled = not selected_outlets or since > until or limit_hit
     run_btn = st.button(
         "▶  Ejecutar",
         type="primary",
         use_container_width=True,
         disabled=run_disabled,
     )
+    st.caption(f"{runs_used}/{ratelimit.MAX_RUNS_PER_HOUR} ejecuciones en la última hora")
+    if limit_hit:
+        free_at = ratelimit.next_free_at()
+        free_str = free_at.strftime("%H:%M") if free_at else "—"
+        st.warning(f"Límite alcanzado. Próxima ejecución disponible a las {free_str}.")
     if since > until:
         st.error("La fecha de inicio debe ser anterior o igual a la fecha de término.")
 
@@ -212,6 +243,7 @@ st.caption(f"{len(REGISTRY)} medios · datos guardados en datos/")
 st.divider()
 
 if run_btn:
+    ratelimit.record_run()
     queries = [q.strip() for q in query_raw.split(",") if q.strip()]
     since_d = date(since.year, since.month, since.day)
     until_d = date(until.year, until.month, until.day)
