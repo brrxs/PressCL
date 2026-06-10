@@ -4,7 +4,7 @@
   <p>Aplicación para buscar noticias en medios chilenos</p>
 </div>
 
-<a href="https://doi.org/10.5281/zenodo.20563693"><img src="https://zenodo.org/badge/1259735009.svg" alt="DOI"></a>
+<a href="https://doi.org/10.5281/zenodo.20563693"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.20563693.svg" alt="DOI"></a>
 
 > **Estado:** Proyecto personal, en uso activo pero sin mantenimiento activo. Issues bienvenidos; PRs revisados según disponibilidad. Los selectores de medios pueden romperse cuando los sitios rediseñan su HTML.
 
@@ -17,15 +17,15 @@ Documentación completa: [INSTRUCTIONS.md](app/INSTRUCTIONS.md)
 
 Si usas PressCL en tu investigación o trabajo, por favor cítalo de la siguiente manera:
 
-> Barrientos, T. (2026). *PressCL: Aplicación para buscar noticias en medios chilenos* (v0.3). Zenodo. https://doi.org/10.5281/zenodo.20563693
+> Barrientos, T. (2026). *PressCL: Aplicación para buscar noticias en medios chilenos* (v0.4.1). Zenodo. https://doi.org/10.5281/zenodo.20563693
 
 ---
 
 ## Descargas
 
-**Última versión: [PressCL v0.3](https://github.com/brrxs/PressCL/releases/tag/v0.3)**
+**Última versión: [PressCL v0.4.1](https://github.com/brrxs/PressCL/releases/tag/v0.4.1)**
 
-1. Descarga el archivo `PressCL-v0.3.zip`
+1. Descarga el archivo `PressCL-v0.4.1.zip`
 2. Extrae la carpeta donde quieras tener la app
 3. Haz doble clic en `setup.bat` (solo la primera vez)
 4. Haz doble clic en el acceso directo **PressCL**
