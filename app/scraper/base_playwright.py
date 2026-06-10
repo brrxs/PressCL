@@ -4,6 +4,7 @@ from typing import Optional
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
+from scraper import robots
 from scraper.base import BaseScraper
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,9 @@ class BasePlaywrightScraper(BaseScraper):
         return self._pw_get(url, scroll=False)
 
     def _pw_get(self, url: str, scroll: bool = False) -> Optional[BeautifulSoup]:
+        if not robots.can_fetch(url):
+            logger.info(f"[{self.SOURCE_SLUG}] robots.txt disallows {url}, skipping")
+            return None
         ctx = None
         try:
             ctx = self._browser.new_context(

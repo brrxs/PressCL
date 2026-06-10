@@ -102,7 +102,7 @@ if not st.session_state.disclaimer_ok:
         El desarrollador no se responsabiliza por el uso indebido de la herramienta.
         """
     )
-    if st.button("Acepto", type="primary", use_container_width=True):
+    if st.button("Acepto", type="primary", width="stretch"):
         st.session_state.disclaimer_ok = True
         st.rerun()
     st.stop()
@@ -184,7 +184,7 @@ with st.sidebar:
     run_btn = st.button(
         "▶  Ejecutar",
         type="primary",
-        use_container_width=True,
+        width="stretch",
         disabled=run_disabled,
     )
     st.caption(f"{runs_used}/{ratelimit.MAX_RUNS_PER_HOUR} ejecuciones en la última hora")
@@ -206,7 +206,7 @@ with st.sidebar:
             st.caption("No hay búsquedas guardadas.")
         if st.button(
             "Limpiar base de datos local",
-            use_container_width=True,
+            width="stretch",
             help=(
                 "Cada vez que ejecutas una búsqueda, los resultados se guardan "
                 "automáticamente en la carpeta datos/ del proyecto.\n\n"
@@ -225,7 +225,7 @@ with st.sidebar:
         st.caption(f"Caché de artículos: {n_cached} · {mb_cache:.1f} MB")
         if st.button(
             "Limpiar caché de artículos",
-            use_container_width=True,
+            width="stretch",
             help=(
                 "Los artículos ya scrapeados se guardan en una caché local permanente "
                 "(app/.cache/) y se sirven desde ahí en vez de volver a pedirlos al medio.\n\n"
@@ -276,7 +276,7 @@ if run_btn:
         styled = df.style.map(_color_estado, subset=["Estado"])
         row_height = 35
         header_height = 38
-        table_slot.dataframe(styled, hide_index=True, use_container_width=True,
+        table_slot.dataframe(styled, hide_index=True, width="stretch",
                              height=header_height + row_height * len(rows))
 
     _refresh()
@@ -332,7 +332,7 @@ if st.session_state.articles:
     preview_cols = ["titulo", "fecha", "fuente", "url"]
     df = pd.DataFrame(articles)
     existing = [c for c in preview_cols if c in df.columns]
-    st.dataframe(df[existing], use_container_width=True, hide_index=True)
+    st.dataframe(df[existing], width="stretch", hide_index=True)
 
     with st.expander("Desglose por fuente"):
         counts: dict[str, int] = {}
@@ -343,7 +343,7 @@ if st.session_state.articles:
             sorted(counts.items(), key=lambda x: -x[1]),
             columns=["Fuente", "Artículos"],
         )
-        st.dataframe(df_counts, hide_index=True, use_container_width=True)
+        st.dataframe(df_counts, hide_index=True, width="stretch")
 
     buf = io.StringIO()
     writer = csv.DictWriter(buf, fieldnames=SCHEMA, extrasaction="ignore")

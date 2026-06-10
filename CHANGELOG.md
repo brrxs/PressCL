@@ -10,6 +10,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - **Responsible-use disclaimer**: a full-page notice shown each time the app opens; the user must click "Acepto" before the interface becomes usable.
 - **Hourly run limit**: whole-app runs are capped at 3 per hour, tracked in a persistent SQLite store (`.cache/runs.sqlite`, `scraper/ratelimit.py`) so the cap survives tab close/reopen. The "▶ Ejecutar" button disables when the cap is reached and shows when the next run unlocks.
+- **robots.txt compliance**: HTML scrapers (`BaseScraper._fetch`, `BasePlaywrightScraper._pw_get`) now check each host's `robots.txt` before requesting a URL, skipping disallowed pages (`scraper/robots.py`). API-based scrapers, which consume explicit JSON endpoints, are exempt.
 
 ---
 

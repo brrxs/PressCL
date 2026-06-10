@@ -10,7 +10,7 @@ from urllib.parse import quote, quote_plus
 import requests
 from bs4 import BeautifulSoup
 
-from scraper import cache
+from scraper import cache, robots
 from scraper.output import save_articles
 from scraper.utils import any_phrase_matches, bare_term, clean_text, parse_date
 
@@ -234,6 +234,9 @@ class BaseScraper(abc.ABC):
     # --- HTTP ---
 
     def _fetch(self, url: str) -> Optional[BeautifulSoup]:
+        if not robots.can_fetch(url):
+            logger.info(f"[{self.SOURCE_SLUG}] robots.txt disallows {url}, skipping")
+            return None
         try:
             resp = (self._session or requests).get(url, headers=self.HEADERS, timeout=self.REQUEST_TIMEOUT)
             if resp.status_code != 200:
