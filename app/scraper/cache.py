@@ -1,3 +1,4 @@
+import atexit
 import json
 import sqlite3
 import threading
@@ -8,7 +9,7 @@ from typing import Optional
 _DB_PATH = Path(__file__).parent.parent / ".cache" / "articles.sqlite"
 _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-_conn = sqlite3.connect(str(_DB_PATH), check_same_thread=False)
+_conn = sqlite3.connect(str(_DB_PATH), check_same_thread=False, timeout=30)
 _conn.execute("PRAGMA journal_mode=WAL")
 _conn.execute(
     "CREATE TABLE IF NOT EXISTS articles "
@@ -16,6 +17,16 @@ _conn.execute(
 )
 _conn.commit()
 _lock = threading.Lock()
+
+
+def _close():
+    try:
+        _conn.close()
+    except Exception:
+        pass
+
+
+atexit.register(_close)
 
 
 def get(url: str) -> Optional[dict]:

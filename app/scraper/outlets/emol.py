@@ -5,6 +5,7 @@ from typing import Optional
 from bs4 import BeautifulSoup
 
 from scraper.base_api import BaseApiScraper
+from scraper.config import MIN_CUERPO_LEN, MIN_TITULO_LEN
 from scraper.utils import clean_text
 
 API_BASE = "https://newsapi.ecn.cl/NewsApi/emol/buscador/emol"
@@ -27,13 +28,13 @@ class EmolScraper(BaseApiScraper):
         titulo = unescape(raw.get("titulo") or "")
         texto_raw = raw.get("texto") or ""
 
-        if not titulo or len(titulo) < 20:
+        if not titulo or len(titulo) < MIN_TITULO_LEN:
             return None
 
         # texto contains HTML markup — extract plain text
         cuerpo = BeautifulSoup(unescape(texto_raw), "lxml").get_text(separator=" ", strip=True)
 
-        if not cuerpo or len(cuerpo) < 400:
+        if not cuerpo or len(cuerpo) < MIN_CUERPO_LEN:
             return None
 
         fecha_raw = raw.get("fechaPublicacion") or raw.get("fechaModificacion")
