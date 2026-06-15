@@ -12,6 +12,7 @@ from typing import Optional
 from scraper.outlets import REGISTRY
 
 _LOG_FILE = Path(__file__).parent / "logs" / "scraping.log"
+_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 _DATOS_DIR = Path(__file__).parent / "datos"
 _CURATED_DIR = Path(__file__).parent / "datos" / "curated"
 _REPORTS_DIR = Path(__file__).parent / "reports"
@@ -88,7 +89,7 @@ def _run_outlet(args: tuple) -> tuple[str, int, Optional[str]]:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Scraper de prensa chilena — Monitor Social UC",
+        description="PressCL — Scraper de prensa chilena",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 examples:
@@ -384,10 +385,13 @@ def _cmd_clean(args):
         if args.outlets:
             slugs = args.outlets
         else:
-            slugs = [
-                d.name for d in sorted(_DATOS_DIR.iterdir())
-                if d.is_dir() and d.name != "curated"
-            ]
+            if _DATOS_DIR.exists():
+                slugs = [
+                    d.name for d in sorted(_DATOS_DIR.iterdir())
+                    if d.is_dir() and d.name != "curated"
+                ]
+            else:
+                slugs = []
         for slug in slugs:
             outlet_dir = _DATOS_DIR / slug
             if not outlet_dir.is_dir():
@@ -426,7 +430,8 @@ def _cmd_merge(args):
     import unicodedata
     import pyarrow as pa
     import pyarrow.parquet as pq
-    from scraper.output import SCHEMA
+    from scraper.config import SCHEMA
+    from scraper.output import flatten_value
     from scraper.utils import any_phrase_matches
 
     def _slugify(text: str) -> str:
@@ -509,7 +514,7 @@ def _cmd_merge(args):
     parquet_path = _CURATED_DIR / f"{stem}.parquet"
 
     def _flatten(v):
-        return re.sub(r"[\r\n]+", " ", str(v)) if isinstance(v, str) else v
+        return flatten_value(v)
 
     # Write CSV
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
@@ -633,6 +638,7 @@ def _check_playwright(scraper):
 
     with sync_playwright() as pw:
         scraper._browser = pw.chromium.launch(headless=True)
+        article = None
         try:
             links = scraper._collect_urls_feed(None, None)
             print(f"link_selector ({scraper.link_selector!r}): {len(links)} valid URLs")

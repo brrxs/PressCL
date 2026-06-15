@@ -7,12 +7,12 @@ from typing import Optional
 
 import requests
 
+from scraper import cache
+from scraper.config import HARD_OFFSET_CAP, MIN_CUERPO_LEN, MIN_TITULO_LEN, USER_AGENT
 from scraper.output import save_articles
 from scraper.utils import any_phrase_matches, bare_term, parse_date
 
 logger = logging.getLogger(__name__)
-
-HARD_OFFSET_CAP = 500  # max 500 articles per run per phrase
 
 
 class BaseApiScraper(abc.ABC):
@@ -21,8 +21,10 @@ class BaseApiScraper(abc.ABC):
     DELAY_MIN: float = 0.5
     DELAY_MAX: float = 1.5
     REQUEST_TIMEOUT: int = 20
-    HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; prensa_chile_py/1.0)"}
-    _session: Optional[requests.Session] = None
+    HEADERS = {"User-Agent": USER_AGENT}
+
+    def __init__(self):
+        self._session: Optional[requests.Session] = None
 
     def run(
         self,
@@ -66,7 +68,8 @@ class BaseApiScraper(abc.ABC):
             a["query"] = query_label
 
         logger.info(f"[{self.SOURCE_SLUG}] {len(articles)} articles collected")
-        save_articles(articles, self.SOURCE_SLUG, queries=queries)
+        if articles:
+            save_articles(articles, self.SOURCE_SLUG, queries=queries)
         return articles
 
     def _collect_for_phrase(self, phrase: str, since: date, until: date) -> list[dict]:
@@ -83,12 +86,25 @@ class BaseApiScraper(abc.ABC):
                 article = self._map_article(raw)
                 if article is None:
                     continue
+
+                # Check cache before processing
+                url = article.get("url") or ""
+                if url:
+                    cached = cache.get(url)
+                    if cached is not None:
+                        results.append(cached)
+                        continue
+
                 d = parse_date(article.get("fecha"))
                 if d and d < since:
                     batch_past_window += 1
                     continue
                 if d and d > until:
                     continue
+
+                # Store in cache for future runs
+                if url:
+                    cache.put(article)
                 results.append(article)
 
             if batch_past_window == len(raw_batch):

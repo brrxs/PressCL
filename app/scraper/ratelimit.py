@@ -1,3 +1,4 @@
+import atexit
 import sqlite3
 import threading
 from datetime import datetime, timedelta
@@ -9,11 +10,21 @@ MAX_RUNS_PER_HOUR = 3
 _DB_PATH = Path(__file__).parent.parent / ".cache" / "runs.sqlite"
 _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-_conn = sqlite3.connect(str(_DB_PATH), check_same_thread=False)
+_conn = sqlite3.connect(str(_DB_PATH), check_same_thread=False, timeout=30)
 _conn.execute("PRAGMA journal_mode=WAL")
 _conn.execute("CREATE TABLE IF NOT EXISTS runs (ts TEXT NOT NULL)")
 _conn.commit()
 _lock = threading.Lock()
+
+
+def _close():
+    try:
+        _conn.close()
+    except Exception:
+        pass
+
+
+atexit.register(_close)
 
 
 def _prune() -> None:

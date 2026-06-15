@@ -5,20 +5,17 @@ import re
 import time
 from datetime import date, datetime, timedelta
 from typing import Optional
-from urllib.parse import quote, quote_plus
+from urllib.parse import quote_plus
 
 import requests
 from bs4 import BeautifulSoup
 
 from scraper import cache, robots
+from scraper.config import HARD_PAGE_CAP, MIN_CUERPO_LEN, MIN_TITULO_LEN, USER_AGENT
 from scraper.output import save_articles
 from scraper.utils import any_phrase_matches, bare_term, clean_text, parse_date
 
 logger = logging.getLogger(__name__)
-
-MIN_TITULO_LEN = 20
-MIN_CUERPO_LEN = 400
-HARD_PAGE_CAP = 50
 
 
 class BaseScraper(abc.ABC):
@@ -28,8 +25,10 @@ class BaseScraper(abc.ABC):
     DELAY_MIN: float = 1.5
     DELAY_MAX: float = 3.5
     REQUEST_TIMEOUT: int = 20
-    HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; prensa_chile_py/1.0; +https://github.com)"}
-    _session: Optional[requests.Session] = None
+    HEADERS = {"User-Agent": USER_AGENT}
+
+    def __init__(self):
+        self._session: Optional[requests.Session] = None
 
     # --- Selectors (subclasses must define) ---
 
@@ -71,6 +70,12 @@ class BaseScraper(abc.ABC):
         )
 
         self._session = requests.Session()
+        # Retry transient HTTP errors with exponential backoff
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
+        retry = Retry(total=2, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+        self._session.mount("https://", HTTPAdapter(max_retries=retry))
+        self._session.mount("http://", HTTPAdapter(max_retries=retry))
         try:
             if queries:
                 all_urls: list[str] = []

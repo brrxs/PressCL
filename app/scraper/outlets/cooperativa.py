@@ -10,9 +10,12 @@ import re
 from datetime import date
 from typing import Optional
 
+import requests
+
 from bs4 import BeautifulSoup
 
-from scraper.base import HARD_PAGE_CAP, BaseScraper
+from scraper.base import BaseScraper
+from scraper.config import HARD_PAGE_CAP
 from scraper.utils import bare_term
 
 logger = logging.getLogger(__name__)
@@ -62,14 +65,13 @@ class CooperativaScraper(BaseScraper):
     def _collect_urls_search(self, phrase: str, since: date, until: date) -> list[str]:
         """Override: build full querystring (prontus_search.cgi needs the
         whole hidden-input bundle, not just `?q=`)."""
-        import requests
         urls: list[str] = []
         for page in range(1, HARD_PAGE_CAP + 1):
             params = dict(_SEARCH_DEFAULTS)
             params["search_texto"] = bare_term(phrase)
             params["search_pag"] = page
             try:
-                resp = requests.get(
+                resp = (self._session or requests).get(
                     _SEARCH_BASE,
                     params=params,
                     headers=self.HEADERS,
