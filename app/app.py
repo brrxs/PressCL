@@ -1,8 +1,10 @@
 import base64
 import csv
 import io
+import logging
 import os
 import shutil
+import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -17,13 +19,12 @@ from scraper.outlets import REGISTRY
 from scraper.output import SCHEMA
 
 # ── Auto-shutdown when last browser tab closes ────────────────────────────────
-_monitor_started = False
+_monitor_started = threading.Event()
 
 def _start_shutdown_monitor():
-    global _monitor_started
-    if _monitor_started:
+    if _monitor_started.is_set():
         return
-    _monitor_started = True
+    _monitor_started.set()
 
     def _monitor():
         time.sleep(15)  # grace period for browser to open
@@ -42,7 +43,7 @@ def _start_shutdown_monitor():
                 if idle_since is None:
                     idle_since = time.time()
                 elif time.time() - idle_since >= 10:
-                    os._exit(0)
+                    sys.exit(0)
             else:
                 idle_since = None
 
@@ -264,8 +265,8 @@ st.divider()
 if run_btn:
     ratelimit.record_run()
     queries = [q.strip() for q in query_raw.split(",") if q.strip()]
-    since_d = date(since.year, since.month, since.day)
-    until_d = date(until.year, until.month, until.day)
+    since_d = since
+    until_d = until
 
     if gn_fulltext:
         os.environ["GNEWS_FULLTEXT"] = "1"
@@ -318,6 +319,7 @@ if run_btn:
                 status[slug] = ("Listo", str(len(arts)))
                 all_articles.extend(arts)
             except Exception as exc:
+                logging.getLogger(__name__).error(f"[{slug}] {exc}", exc_info=True)
                 status[slug] = ("Error", "0")
             progress_bar.progress(done / len(selected_outlets))
             _refresh()

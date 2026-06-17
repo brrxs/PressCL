@@ -10,11 +10,11 @@ import re
 from datetime import date
 from typing import Optional
 
-import requests as _requests
+import requests
 from bs4 import BeautifulSoup
 
-from scraper.base import HARD_PAGE_CAP
 from scraper.base_playwright import BasePlaywrightScraper
+from scraper.config import HARD_PAGE_CAP
 from scraper.utils import bare_term
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ class Horas24Scraper(BasePlaywrightScraper):
             params["search_texto"] = bare_term(phrase)
             params["search_pag"] = page
             try:
-                resp = _requests.get(
+                resp = (self._session or requests).get(
                     _SEARCH_BASE,
                     params=params,
                     headers=self.HEADERS,

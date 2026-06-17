@@ -12,6 +12,8 @@ from typing import Optional
 from bs4 import BeautifulSoup
 
 from scraper.base_api import BaseApiScraper
+from scraper.config import MIN_CUERPO_LEN, MIN_TITULO_LEN
+from scraper.utils import clean_text
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +50,7 @@ class BiobbioScraper(BaseApiScraper):
         return data.get("notas") or []
 
     def _map_article(self, raw: dict) -> Optional[dict]:
-        titulo = unescape(raw.get("post_title") or "").strip()
+        titulo = clean_text(unescape(raw.get("post_title") or "").strip())
         body_html = raw.get("post_content") or ""
         bajada = unescape(raw.get("post_excerpt") or "").strip() or None
         url = raw.get("post_URL_https") or raw.get("post_URL") or ""
@@ -65,16 +67,16 @@ class BiobbioScraper(BaseApiScraper):
         # Strip HTML to plain text body (paragraphs joined with \n)
         cuerpo = _html_to_paragraphs(body_html) if body_html else ""
 
-        if not titulo or len(titulo) < 20:
+        if not titulo or len(titulo) < MIN_TITULO_LEN:
             return None
-        if not cuerpo or len(cuerpo) < 400:
+        if not cuerpo or len(cuerpo) < MIN_CUERPO_LEN:
             return None
         if not url:
             return None
 
         return {
             "titulo": titulo,
-            "cuerpo": cuerpo,
+            "cuerpo": clean_text(cuerpo),
             "bajada": bajada,
             "fecha": fecha or None,
             "fuente": self.SOURCE_SLUG,

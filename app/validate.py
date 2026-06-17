@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 DATOS_DIR = Path(__file__).parent / "datos"
-SCHEMA = ["titulo", "cuerpo", "bajada", "fecha", "fuente", "url", "fecha_scraping", "query"]
+from scraper.config import SCHEMA
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 

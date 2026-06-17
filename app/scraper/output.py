@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 OUTPUT_DIR = Path(__file__).parent.parent / "datos"
 
-SCHEMA = ["titulo", "cuerpo", "bajada", "fecha", "fuente", "url", "fecha_scraping", "query"]
+from scraper.config import SCHEMA
 
 
 def _query_slug(q: str) -> str:
@@ -46,8 +46,13 @@ def save_articles(
     return base
 
 
-def _flatten(v) -> str:
-    return re.sub(r"[\r\n]+", " ", str(v)) if isinstance(v, str) else v
+def flatten_value(v):
+    """Flatten newlines in strings; convert None to empty string."""
+    if v is None:
+        return ""
+    if isinstance(v, str):
+        return re.sub(r"[\r\n]+", " ", v)
+    return str(v)
 
 
 def _write_csv(articles: list[dict], path: Path) -> None:
@@ -55,7 +60,7 @@ def _write_csv(articles: list[dict], path: Path) -> None:
         writer = csv.DictWriter(f, fieldnames=SCHEMA, extrasaction="ignore")
         writer.writeheader()
         for row in articles:
-            writer.writerow({k: _flatten(v) for k, v in row.items()})
+            writer.writerow({k: flatten_value(v) for k, v in row.items()})
 
 
 def _write_parquet(articles: list[dict], path: Path) -> None:

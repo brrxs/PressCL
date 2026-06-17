@@ -12,9 +12,11 @@ from urllib.robotparser import RobotFileParser
 
 import requests
 
+from scraper.config import PROJECT_NAME
+
 logger = logging.getLogger(__name__)
 
-BOT_UA = "prensa_chile_py"
+BOT_UA = PROJECT_NAME
 
 _cache: dict[str, RobotFileParser | None] = {}
 _lock = threading.Lock()
