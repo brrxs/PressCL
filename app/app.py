@@ -1,4 +1,5 @@
 import base64
+import concurrent.futures
 import csv
 import io
 import logging
@@ -7,7 +8,8 @@ import shutil
 import sys
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -15,8 +17,32 @@ import pandas as pd
 import streamlit as st
 
 from scraper import cache, ratelimit
+from scraper.config import PROJECT_NAME, PROJECT_VERSION
 from scraper.outlets import REGISTRY
 from scraper.output import SCHEMA
+
+# ── Live-log capture ──────────────────────────────────────────────────────────
+_LOG_FMT = logging.Formatter(
+    "%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+)
+_LOG_FILE = Path(__file__).parent / "logs" / "scraping.log"
+
+
+class _BufferHandler(logging.Handler):
+    """Appends formatted records to a thread-safe deque for live UI display.
+
+    Uses a plain deque (not st.session_state) because emit() runs on
+    ThreadPoolExecutor worker threads; deque.append is thread-safe, but
+    touching Streamlit APIs off the main script thread is not.
+    """
+
+    def __init__(self, buffer: deque):
+        super().__init__()
+        self.buffer = buffer
+
+    def emit(self, record):
+        self.buffer.append(self.format(record))
+
 
 # ── Auto-shutdown when last browser tab closes ────────────────────────────────
 _monitor_started = threading.Event()
@@ -53,7 +79,7 @@ _start_shutdown_monitor()
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Scraper de Prensa Chilena",
+    page_title=f"{PROJECT_NAME}: Scraper de Prensa Chilena",
     page_icon="🗞",
     layout="wide",
 )
@@ -197,6 +223,12 @@ with st.sidebar:
             help="Descarga el artículo completo vía Playwright (más lento). "
                  "Por defecto sólo trae el extracto RSS.",
         )
+        show_log = st.checkbox(
+            "Log en vivo",
+            value=False,
+            help="Muestra el registro detallado del scraping al pie de la página "
+                 "y lo guarda en logs/scraping.log",
+        )
 
     runs_used = ratelimit.count_last_hour()
     limit_hit = runs_used >= ratelimit.MAX_RUNS_PER_HOUR
@@ -258,7 +290,8 @@ with st.sidebar:
             st.rerun()
 
 # ── Main ──────────────────────────────────────────────────────────────────────
-st.title("Scraper de Prensa Chilena")
+st.title("PressCL")
+st.header("Scraper de Prensa Chilena")
 st.caption(f"{len(REGISTRY)} medios · datos guardados en datos/")
 st.divider()
 
@@ -301,6 +334,33 @@ if run_btn:
 
     _refresh()
 
+    log_buffer: deque = deque(maxlen=1000)
+    log_slot = None
+    if show_log:
+        st.markdown("##### Log en vivo")
+        log_box = st.container(height=320)
+        log_slot = log_box.empty()
+        log_slot.code("", language="log")
+
+    st.session_state.run_log = ""
+
+    root_logger = logging.getLogger()
+    _log_handlers: list[logging.Handler] = []
+    if show_log:
+        _LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        buffer_handler = _BufferHandler(log_buffer)
+        file_handler = logging.FileHandler(_LOG_FILE, encoding="utf-8")
+        for h in (buffer_handler, file_handler):
+            h.setFormatter(_LOG_FMT)
+            root_logger.addHandler(h)
+            _log_handlers.append(h)
+        _prev_level = root_logger.level
+        root_logger.setLevel(logging.INFO)
+        logging.getLogger(__name__).info(
+            f"Running {len(selected_outlets)} outlet(s) | since={since_d} "
+            f"until={until_d} query={queries} | workers={n_workers}"
+        )
+
     def _scrape(slug: str) -> tuple[str, list[dict]]:
         scraper = REGISTRY[slug]()
         articles = scraper.run(queries=queries, since=since_d, until=until_d)
@@ -309,20 +369,35 @@ if run_btn:
     all_articles: list[dict] = []
     done = 0
 
-    with ThreadPoolExecutor(max_workers=n_workers) as pool:
-        futures = {pool.submit(_scrape, slug): slug for slug in selected_outlets}
-        for future in as_completed(futures):
-            slug = futures[future]
-            done += 1
-            try:
-                _, arts = future.result()
-                status[slug] = ("Listo", str(len(arts)))
-                all_articles.extend(arts)
-            except Exception as exc:
-                logging.getLogger(__name__).error(f"[{slug}] {exc}", exc_info=True)
-                status[slug] = ("Error", "0")
-            progress_bar.progress(done / len(selected_outlets))
-            _refresh()
+    try:
+        with ThreadPoolExecutor(max_workers=n_workers) as pool:
+            fut_to_slug = {pool.submit(_scrape, slug): slug for slug in selected_outlets}
+            pending = set(fut_to_slug)
+            while pending:
+                done_now, pending = concurrent.futures.wait(
+                    pending, timeout=0.5,
+                    return_when=concurrent.futures.FIRST_COMPLETED,
+                )
+                for future in done_now:
+                    slug = fut_to_slug[future]
+                    done += 1
+                    try:
+                        _, arts = future.result()
+                        status[slug] = ("Listo", str(len(arts)))
+                        all_articles.extend(arts)
+                    except Exception as exc:
+                        logging.getLogger(__name__).error(f"[{slug}] {exc}", exc_info=True)
+                        status[slug] = ("Error", "0")
+                progress_bar.progress(done / len(selected_outlets))
+                _refresh()
+                if show_log:
+                    log_slot.code("\n".join(log_buffer), language="log")
+    finally:
+        if show_log:
+            root_logger.setLevel(_prev_level)
+            for h in _log_handlers:
+                root_logger.removeHandler(h)
+                h.close()
 
     st.session_state.articles = all_articles
     st.session_state.run_meta = {
@@ -331,6 +406,8 @@ if run_btn:
         "until": until,
         "n_outlets": len(selected_outlets),
     }
+    if show_log:
+        st.session_state.run_log = "\n".join(log_buffer)
 
     if all_articles:
         st.success(f"✓ {len(all_articles)} artículos recopilados.")
@@ -390,3 +467,10 @@ else:
         """,
         unsafe_allow_html=True,
     )
+
+# ── Persistent log panel (after a completed run) ──────────────────────────────
+if not run_btn and show_log and st.session_state.get("run_log"):
+    st.divider()
+    st.markdown("##### Log de la última ejecución")
+    with st.container(height=320):
+        st.code(st.session_state.run_log, language="log")
