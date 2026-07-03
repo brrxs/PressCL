@@ -7,7 +7,7 @@ source of truth.
 
 # ── Project identity ──────────────────────────────────────────────────────────
 PROJECT_NAME = "PressCL"
-PROJECT_VERSION = "0.4.1"
+PROJECT_VERSION = "0.5"
 
 # ── User-Agent strings ────────────────────────────────────────────────────────
 # Bot-style UA used by HTML/API scrapers and robots.txt checks.

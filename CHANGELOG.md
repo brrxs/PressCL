@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.5] — 2026-07-03
+
+### Added
+- **Live log panel** ("Log en vivo", in *Opciones avanzadas*): streams the scrapers'
+  detailed log to a terminal-style panel below the progress table while a run is in
+  progress, refreshing ~2×/sec. The log is also appended to `logs/scraping.log`
+  (same format as the CLI) and remains visible after the run completes. Previously
+  scraper logging was silently dropped in the GUI — only the CLI wrote a log file.
+
+### Changed
+- **Codebase refactor** ([#1] — thanks to Alejandro [@theChosen16]): configuration
+  centralized in `scraper/config.py` (magic numbers, paths, and defaults in one
+  place); more robust error handling and I/O across the scraper package; thread-safe
+  auto-shutdown monitor (`threading.Event`).
+- GUI scraping loop now polls futures (`concurrent.futures.wait`) instead of blocking
+  on `as_completed`, so progress bar and status table update continuously.
+
+### Removed
+- `scraper/streamlit_runner.py` (dead code since [0.3], removed in [#1]).
+
+[#1]: https://github.com/brrxs/PressCL/pull/1
+[@theChosen16]: https://github.com/theChosen16
+
+---
+
 ## [0.4.1] — 2026-06-09
 
 ### Added
@@ -85,6 +110,7 @@ First working release. CLI-only.
 
 ---
 
+[0.5]: https://github.com/brrxs/PressCL/compare/v0.4.1...v0.5
 [0.4.1]: https://github.com/brrxs/PressCL/compare/v0.4...v0.4.1
 [0.4]: https://github.com/brrxs/PressCL/compare/v0.3...v0.4
 [0.3]: https://github.com/brrxs/PressCL/compare/v0.2...v0.3
