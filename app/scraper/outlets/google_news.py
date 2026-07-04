@@ -11,7 +11,7 @@ Proxy: set GNEWS_PROXY env var to route requests through a proxy.
 Full-text: set GNEWS_FULLTEXT=1 (or use --gn-full flag in run.py) to fetch the
   real article body via parallel async Playwright + trafilatura. Default is RSS
   snippet only. Concurrency: _GN_CONCURRENT pages (default 5).
-  Cap: _GN_FULLTEXT_MAX articles enriched per run (default 150, env GNEWS_FULLTEXT_MAX).
+  Cap: every article is enriched by default; set GNEWS_FULLTEXT_MAX=N to cap.
 """
 import asyncio
 import logging
@@ -45,7 +45,7 @@ _HTTP_TIMEOUT = 30             # seconds — hard requests timeout per RSS fetch
 _RSS_FETCH_TIMEOUT = 45        # seconds — ThreadPoolExecutor timeout per GNews call
 _MIN_FULLTEXT_LEN = 100
 _GN_CONCURRENT = 5             # parallel Playwright pages during enrichment
-_GN_FULLTEXT_MAX = int(os.getenv("GNEWS_FULLTEXT_MAX", "150"))
+_GN_FULLTEXT_MAX = int(os.getenv("GNEWS_FULLTEXT_MAX", "0"))  # 0 = no cap, enrich all
 _GN_PROGRESS_EVERY = 25        # log enrichment progress every N articles
 _PW_TIMEOUT = 15_000           # ms per page navigation
 _PW_URL_WAIT = 6_000           # ms to wait for URL to leave news.google.com
@@ -113,11 +113,11 @@ class GoogleNewsScraper(BaseApiScraper):
         # Step 2: enrich in parallel if requested
         if fulltext and articles:
             cap = _GN_FULLTEXT_MAX
-            if len(articles) > cap:
+            if cap > 0 and len(articles) > cap:
                 logger.warning(
                     f"[{self.SOURCE_SLUG}] {len(articles)} articles collected — "
                     f"enriching first {cap} with full text, remaining {len(articles) - cap} "
-                    f"will keep RSS snippet (set GNEWS_FULLTEXT_MAX to override)"
+                    f"will keep RSS snippet (GNEWS_FULLTEXT_MAX={cap}; unset it to enrich all)"
                 )
                 to_enrich, rest = articles[:cap], articles[cap:]
             else:

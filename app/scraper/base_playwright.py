@@ -1,4 +1,6 @@
 import logging
+import random
+import time
 from typing import Optional
 
 from bs4 import BeautifulSoup
@@ -8,6 +10,8 @@ from scraper import robots
 from scraper.base import BaseScraper
 
 logger = logging.getLogger(__name__)
+
+_PW_RETRY_DELAYS = (4, 10)  # seconds between attempts on navigation errors
 
 
 class BasePlaywrightScraper(BaseScraper):
@@ -32,24 +36,34 @@ class BasePlaywrightScraper(BaseScraper):
         if not robots.can_fetch(url):
             logger.info(f"[{self.SOURCE_SLUG}] robots.txt disallows {url}, skipping")
             return None
-        ctx = None
-        try:
-            ctx = self._browser.new_context(
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/124.0.0.0 Safari/537.36"
+        for attempt in range(len(_PW_RETRY_DELAYS) + 1):
+            ctx = None
+            try:
+                ctx = self._browser.new_context(
+                    user_agent=(
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/124.0.0.0 Safari/537.36"
+                    )
                 )
-            )
-            page = ctx.new_page()
-            page.goto(url, wait_until=self.WAIT_UNTIL, timeout=self.PAGE_TIMEOUT)
-            if scroll:
-                page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                page.wait_for_timeout(2000)
-            return BeautifulSoup(page.content(), "lxml")
-        except Exception as e:
-            logger.warning(f"[{self.SOURCE_SLUG}] playwright error {url}: {e}")
-            return None
-        finally:
-            if ctx is not None:
-                ctx.close()
+                page = ctx.new_page()
+                page.goto(url, wait_until=self.WAIT_UNTIL, timeout=self.PAGE_TIMEOUT)
+                if scroll:
+                    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                    page.wait_for_timeout(2000)
+                return BeautifulSoup(page.content(), "lxml")
+            except Exception as e:
+                if attempt < len(_PW_RETRY_DELAYS):
+                    delay = _PW_RETRY_DELAYS[attempt] + random.uniform(0, 2)
+                    logger.warning(
+                        f"[{self.SOURCE_SLUG}] playwright error {url}: {e} — "
+                        f"retrying in {delay:.0f}s ({attempt + 1}/{len(_PW_RETRY_DELAYS)})"
+                    )
+                    time.sleep(delay)
+                else:
+                    logger.warning(f"[{self.SOURCE_SLUG}] playwright error {url}: {e}")
+                    return None
+            finally:
+                if ctx is not None:
+                    ctx.close()
+        return None
