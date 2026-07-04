@@ -138,9 +138,14 @@ class BaseScraper(abc.ABC):
                     )
                 break
             urls.extend(links)
-            dated = [d for d in (_date_from_url(u) for u in links) if d is not None]
+            dated = [d for d in (self._link_date(u) for u in links) if d is not None]
             if dated and len(dated) == len(links) and all(d < since for d in dated):
                 break
+            if page % 10 == 0:
+                logger.info(
+                    f"[{self.SOURCE_SLUG}] search {phrase!r}: page {page}/{HARD_PAGE_CAP}, "
+                    f"{len(urls)} URLs so far"
+                )
             self._polite_delay()
         return list(dict.fromkeys(urls))
 
@@ -155,11 +160,21 @@ class BaseScraper(abc.ABC):
             if not links:
                 break
             urls.extend(links)
-            dated = [d for d in (_date_from_url(u) for u in links) if d is not None]
+            dated = [d for d in (self._link_date(u) for u in links) if d is not None]
             if dated and len(dated) == len(links) and all(d < since for d in dated):
                 break
+            if page % 10 == 0:
+                logger.info(
+                    f"[{self.SOURCE_SLUG}] feed: page {page}/{HARD_PAGE_CAP}, "
+                    f"{len(urls)} URLs so far"
+                )
             self._polite_delay()
         return list(dict.fromkeys(urls))
+
+    def _link_date(self, url: str) -> Optional[date]:
+        """Date extracted from a link URL, used by the pagination early-stop.
+        Override for outlets whose URLs lack the /YYYY/MM/DD/ pattern."""
+        return _date_from_url(url)
 
     # --- Article scraping ---
 
