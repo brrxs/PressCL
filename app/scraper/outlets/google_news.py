@@ -4,7 +4,9 @@ Uses GNews (ranahaani/GNews) which wraps the official Google News RSS endpoint
 with Chile/Spanish targeting, automatic URL resolution, and optional proxy support.
 
 503 mitigation: per-day fetch with exponential backoff (3 attempts, 5/15/30s).
-  Per-fetch timeout: 45s via ThreadPoolExecutor to catch GNews hangs.
+  Feed fetch uses requests with a 30s hard timeout (_TimeoutGNews) — stock GNews
+  uses feedparser.parse(url) with NO network timeout and can hang forever.
+  Belt-and-braces: 45s ThreadPoolExecutor guard with non-blocking shutdown.
 Proxy: set GNEWS_PROXY env var to route requests through a proxy.
 Full-text: set GNEWS_FULLTEXT=1 (or use --gn-full flag in run.py) to fetch the
   real article body via parallel async Playwright + trafilatura. Default is RSS
@@ -21,8 +23,11 @@ from datetime import date, datetime, timedelta
 from email.utils import parsedate_to_datetime
 from typing import Optional
 
+import feedparser
+import requests
 from bs4 import BeautifulSoup
 from gnews import GNews
+from gnews.utils.constants import USER_AGENT as _GNEWS_USER_AGENT
 
 from scraper.base_api import BaseApiScraper
 
@@ -36,6 +41,7 @@ logger = logging.getLogger(__name__)
 
 _MAX_PER_DAY = 100
 _RETRY_DELAYS = (5, 15, 30)
+_HTTP_TIMEOUT = 30             # seconds — hard requests timeout per RSS fetch
 _RSS_FETCH_TIMEOUT = 45        # seconds — ThreadPoolExecutor timeout per GNews call
 _MIN_FULLTEXT_LEN = 100
 _GN_CONCURRENT = 5             # parallel Playwright pages during enrichment
@@ -54,6 +60,44 @@ _GOOGLE_CONSENT_COOKIE = {
     "domain": ".google.com",
     "path": "/",
 }
+
+
+class _TimeoutGNews(GNews):
+    """GNews with a real network timeout on the RSS fetch.
+
+    Stock _fetch_feed calls feedparser.parse(url), which opens the socket with
+    no timeout — a stalled connection hangs the scraper indefinitely. Fetch the
+    feed ourselves with requests (hard timeout), then hand the bytes to
+    feedparser. _get_news reads feed.status for 429 handling, so restore it.
+    """
+
+    def _fetch_feed(self, url: str):
+        resp = requests.get(
+            url,
+            headers={"User-Agent": _GNEWS_USER_AGENT},
+            proxies=self._proxy,
+            timeout=_HTTP_TIMEOUT,
+        )
+        feed = feedparser.parse(resp.content)
+        feed["status"] = resp.status_code
+        return feed
+
+    def _process(self, item: dict) -> Optional[dict]:
+        # Stock _process resolves every news.google.com link by launching a
+        # sync Playwright browser PER ITEM (up to 100 per day-fetch) — that is
+        # what blew the 45s timeout, not the feed download. Keep the redirect
+        # URL as-is; the GNEWS_FULLTEXT enrichment step already resolves it
+        # in parallel when the real article URL/body is wanted.
+        url = item.get("link")
+        if not url:
+            return None
+        return {
+            "title": item.get("title", ""),
+            "description": self._clean(item.get("description", "")),
+            "published date": item.get("published", ""),
+            "url": url,
+            "publisher": item.get("source", " "),
+        }
 
 
 class GoogleNewsScraper(BaseApiScraper):
@@ -105,25 +149,33 @@ class GoogleNewsScraper(BaseApiScraper):
 
     def _fetch_day(self, phrase: str, day: date, proxy: Optional[str]) -> list[dict]:
         next_day = day + timedelta(days=1)
-        client = GNews(
+        client = _TimeoutGNews(
             language="es",
             country="CL",
             max_results=_MAX_PER_DAY,
             start_date=(day.year, day.month, day.day),
             end_date=(next_day.year, next_day.month, next_day.day),
+            # GNews has no `proxy` setter — must go through the constructor
+            proxy={"http": proxy, "https": proxy} if proxy else None,
+            # 429 retries are handled by our own loop below (5/15/30s);
+            # GNews's internal backoff would overrun the 45s guard
+            max_retries=0,
         )
-        if proxy:
-            client.proxy = {"http": proxy, "https": proxy}
 
         for attempt in range(len(_RETRY_DELAYS) + 1):
             try:
-                # Guard against GNews hanging indefinitely on a single day-fetch
-                with ThreadPoolExecutor(max_workers=1) as ex:
+                # Guard against a single day-fetch stalling. shutdown(wait=False):
+                # a `with` block would join the worker thread on exit, blocking
+                # the retry loop for as long as the stuck fetch takes.
+                ex = ThreadPoolExecutor(max_workers=1)
+                try:
                     future = ex.submit(client.get_news, phrase)
                     try:
                         raw_list = future.result(timeout=_RSS_FETCH_TIMEOUT)
                     except FuturesTimeoutError:
                         raise TimeoutError(f"GNews fetch timed out after {_RSS_FETCH_TIMEOUT}s")
+                finally:
+                    ex.shutdown(wait=False)
 
                 n = len(raw_list)
                 logger.info(f"[{self.SOURCE_SLUG}] {day} query={phrase!r} -> {n} results")
@@ -149,7 +201,7 @@ class GoogleNewsScraper(BaseApiScraper):
         """Used only by run.py `check` command — returns raw GNews dicts for today."""
         if offset > 0:
             return []
-        client = GNews(language="es", country="CL", max_results=10)
+        client = _TimeoutGNews(language="es", country="CL", max_results=10)
         try:
             return client.get_news(query or "chile")
         except Exception as e:

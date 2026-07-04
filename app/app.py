@@ -136,7 +136,8 @@ if not st.session_state.disclaimer_ok:
 
         - **Pausas aleatorias entre solicitudes** para no sobrecargar los servidores.
         - **Caché permanente**: ningún artículo se descarga dos veces.
-        - **Límite de 3 ejecuciones por hora** de la aplicación completa.
+        - **Límite de 3 ejecuciones por hora** de la aplicación completa
+          (ajustable por sesión con la variable `PRESSCL_MAX_RUNS_PER_HOUR`).
         - **Respeto de `robots.txt`** en las solicitudes HTML de cada medio.
 
         Lo que queda de tu lado:
@@ -231,7 +232,7 @@ with st.sidebar:
         )
 
     runs_used = ratelimit.count_last_hour()
-    limit_hit = runs_used >= ratelimit.MAX_RUNS_PER_HOUR
+    limit_hit = ratelimit.MAX_RUNS_PER_HOUR > 0 and runs_used >= ratelimit.MAX_RUNS_PER_HOUR
     run_disabled = not selected_outlets or since > until or limit_hit
     run_btn = st.button(
         "▶  Ejecutar",
@@ -239,7 +240,10 @@ with st.sidebar:
         width="stretch",
         disabled=run_disabled,
     )
-    st.caption(f"{runs_used}/{ratelimit.MAX_RUNS_PER_HOUR} ejecuciones en la última hora")
+    if ratelimit.MAX_RUNS_PER_HOUR > 0:
+        st.caption(f"{runs_used}/{ratelimit.MAX_RUNS_PER_HOUR} ejecuciones en la última hora")
+    else:
+        st.caption(f"{runs_used} ejecuciones en la última hora (sin límite)")
     if limit_hit:
         free_at = ratelimit.next_free_at()
         free_str = free_at.strftime("%H:%M") if free_at else "—"
@@ -348,6 +352,18 @@ if run_btn:
     _log_handlers: list[logging.Handler] = []
     if show_log:
         _LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        # Purge handlers left over from a previous run that never reached its
+        # cleanup (e.g. Streamlit rerun mid-scrape) — otherwise every line is
+        # written to the log once per stale handler
+        _log_path = str(_LOG_FILE.resolve())
+        for h in list(root_logger.handlers):
+            stale = isinstance(h, _BufferHandler) or (
+                isinstance(h, logging.FileHandler)
+                and getattr(h, "baseFilename", None) == _log_path
+            )
+            if stale:
+                root_logger.removeHandler(h)
+                h.close()
         buffer_handler = _BufferHandler(log_buffer)
         file_handler = logging.FileHandler(_LOG_FILE, encoding="utf-8")
         for h in (buffer_handler, file_handler):

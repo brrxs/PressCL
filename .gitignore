@@ -15,6 +15,9 @@ analisis/
 .env
 .streamlit/secrets.toml
 
+# Local-only testing mode (disables the hourly run limit)
+test-mode.bat
+
 # Lock files (keep requirements-lock.txt, ignore pip state files)
 *.lock
 pip-*.json
