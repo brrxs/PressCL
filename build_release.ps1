@@ -10,7 +10,7 @@ $out     = Join-Path $src $zipName
 if (Test-Path $out) { Remove-Item $out -Force }
 
 $excludeDirs  = @('.git', '.venv', '__pycache__', 'datos', 'logs', 'reports', 'analisis')
-$excludeFiles = @($zipName, 'build_release.bat', 'build_release.ps1', 'TODO.md', 'bug_report.md', 'presscl.gif', 'PressCL.lnk', 'Detener Scraper.lnk', 'Abrir Scraper de Prensa.lnk')
+$excludeFiles = @($zipName, 'build_release.bat', 'build_release.ps1', 'TODO.md', 'bug_report.md', 'presscl.gif', 'PressCL.lnk', 'Detener Scraper.lnk', 'Abrir Scraper de Prensa.lnk', 'test-mode.bat')
 $excludeExts  = @('.pyc', '.pyo', '.log')
 
 Add-Type -Assembly System.IO.Compression.FileSystem

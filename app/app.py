@@ -136,8 +136,7 @@ if not st.session_state.disclaimer_ok:
 
         - **Pausas aleatorias entre solicitudes** para no sobrecargar los servidores.
         - **Caché permanente**: ningún artículo se descarga dos veces.
-        - **Límite de 3 ejecuciones por hora** de la aplicación completa
-          (ajustable por sesión con la variable `PRESSCL_MAX_RUNS_PER_HOUR`).
+        - **Límite de 3 ejecuciones por hora** de la aplicación completa.
         - **Respeto de `robots.txt`** en las solicitudes HTML de cada medio.
 
         Lo que queda de tu lado:

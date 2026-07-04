@@ -1,11 +1,14 @@
 import atexit
+import os
 import sqlite3
 import threading
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-MAX_RUNS_PER_HOUR = 3
+# Env override solo para la sesión actual: PRESSCL_MAX_RUNS_PER_HOUR=0 lo
+# desactiva (modo de prueba, ver test-mode.bat). Por defecto 3/hora.
+MAX_RUNS_PER_HOUR = int(os.getenv("PRESSCL_MAX_RUNS_PER_HOUR", "3"))
 
 _DB_PATH = Path(__file__).parent.parent / ".cache" / "runs.sqlite"
 _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
